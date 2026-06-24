@@ -101,7 +101,43 @@ let db, currentUser, impersonated=null, editingOrderId=null;
 const qs=id=>document.getElementById(id); const money=n=>'€ '+(Number(n)||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
 function defaultDb(){return {users:[{id:'u_admin',name:'Admin Metauein',username:'admin',password:'admin123',role:'admin'}],clients:[],orders:[],nextOrderNumber:1}}
 function loadDb(){db=JSON.parse(localStorage.getItem('metaueinOrdersV2')||'null')||defaultDb(); if(!db.nextOrderNumber){db.nextOrderNumber=(db.orders?.length||0)+1} saveDb()} function saveDb(){localStorage.setItem('metaueinOrdersV2',JSON.stringify(db))}
-function login(){loadDb();let u=db.users.find(x=>x.username===qs('loginUser').value.trim()&&x.password===qs('loginPass').value);if(!u){qs('loginErr').classList.remove('hidden');return}currentUser=u;impersonated=null;qs('login').classList.add('hidden');qs('app').classList.remove('hidden');initApp()}
+async function login(){
+  if(!sb){
+    qs('loginErr').textContent='Supabase non configurato.';
+    qs('loginErr').classList.remove('hidden');
+    return;
+  }
+
+  const username = qs('loginUser').value.trim();
+  const password = qs('loginPass').value;
+
+  const {data:u,error}=await sb
+    .from('app_users')
+    .select('*')
+    .eq('username',username)
+    .eq('password',password)
+    .single();
+
+  if(error || !u){
+    qs('loginErr').textContent='Credenziali non corrette.';
+    qs('loginErr').classList.remove('hidden');
+    return;
+  }
+
+  loadDb();
+  currentUser={
+    id:u.id,
+    name:u.name,
+    username:u.username,
+    password:u.password,
+    role:u.role
+  };
+
+  impersonated=null;
+  qs('login').classList.add('hidden');
+  qs('app').classList.remove('hidden');
+  initApp();
+}
 function logout(){currentUser=null;impersonated=null;location.reload()} function activeUser(){return impersonated||currentUser}
 function initApp(){qs('who').innerHTML=`${currentUser.name} <span class="pill">${currentUser.role==='admin'?'Admin':'Venditore'}</span>`;document.querySelectorAll('.adminOnly').forEach(e=>e.style.display=currentUser.role==='admin'?'block':'none');renderAll();newOrder()}
 function showView(v,btn){document.querySelectorAll('.view').forEach(e=>e.classList.add('hidden'));qs('view-'+v).classList.remove('hidden');document.querySelectorAll('.navbtn').forEach(e=>e.classList.remove('active'));btn.classList.add('active');renderAll()}
