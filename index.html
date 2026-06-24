@@ -89,6 +89,13 @@
       </main>
     </div>
   </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===== Configurazione Supabase ===== */
+const SUPABASE_URL='https://hzdxllapewdzrptozbak.supabase.co';
+const SUPABASE_KEY='sb_publishable_y34cW24MNQTh8_JuBTrdAA_UH8LZ9Cm';
+const sb=(window.supabase&&SUPABASE_URL.indexOf('INCOLLA')===-1)?window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY):null;
+</script>
 <script>
 const COMPANY={name:'Metauein Srl',address:'Via Sempione 161, Pero, 20016',vat:'P.IVA 098XXXXXXXX',site:'metauein.it'};
 let db, currentUser, impersonated=null, editingOrderId=null;
@@ -114,7 +121,53 @@ function renderClients(){let sel=qs('clientSelect');sel.innerHTML='<option value
 function loadClientFromSelect(){let c=db.clients.find(x=>x.id===qs('clientSelect').value); if(c)setClient(c)}
 function nextOrderId(){return 'ORD-'+new Date().getFullYear()+'-'+String(db.nextOrderNumber||1).padStart(5,'0')}
 function orderData(){return {id:editingOrderId||nextOrderId(),date:new Date().toLocaleDateString('it-IT'),sellerId:activeUser().id,sellerName:activeUser().name,client:clientData(),products:getProducts(),payment:qs('payment').value,country:qs('country').value,courier:qs('courier').value,shipping:+qs('shippingCost').value||0,notes:qs('notes').value,subtotal:subtotal(),iva:ivaTotal(),total:total()}}
-function saveOrder(){if(!formReadyForDocument(true))return;let isNew=!editingOrderId;let o=orderData();let i=db.orders.findIndex(x=>x.id===o.id); if(i>=0)db.orders[i]=o;else db.orders.unshift(o); if(isNew)db.nextOrderNumber=(db.nextOrderNumber||1)+1; saveDb();editingOrderId=o.id;renderAll();alert('Ordine salvato')}
+function saveOrder(){if(!formReadyForDocument(true))return;let isNew=!editingOrderId;let o=orderData();let i=db.orders.findIndex(x=>x.id===o.id); if(i>=0)db.orders[i]=o;else db.orders.unshift(o); if(isNew)db.nextOrderNumber=(db.nextOrderNumber||1)+1; saveDb();editingOrderId=o.id;renderAll();saveOrderToSupabase(o)}
+async function saveOrderToSupabase(o){
+  if(!sb){alert('Ordine salvato (solo locale: Supabase non configurato).');return}
+  try{
+    const c=o.client;
+    const shipping_address=[
+      [c.street,c.streetNo].filter(Boolean).join(' '),
+      [c.zip,c.city].filter(Boolean).join(' '),
+      c.province
+    ].filter(Boolean).join(', ');
+    // 1. inserisci l'ordine principale
+    const {data:ordine,error:errOrdine}=await sb
+      .from('orders')
+      .insert({
+        customer_name:c.name||'',
+        shipping_address:shipping_address,
+        payment_method:o.payment||'',
+        courier:o.courier||'',
+        notes:o.notes||'',
+        total_amount:o.total
+      })
+      .select()
+      .single();
+    if(errOrdine)throw errOrdine;
+    // 2. recupera l'id dell'ordine creato
+    const orderId=ordine.id;
+    // 3. inserisci i prodotti collegati
+    const items=(o.products||[]).map(p=>({
+      order_id:orderId,
+      product:p.name||'',
+      gb:p.gb||'',
+      quantity:p.qty||0,
+      vat:p.ivaCode||'',
+      sale_price:p.price||0
+    }));
+    if(items.length){
+      const {error:errItems}=await sb.from('order_items').insert(items);
+      if(errItems)throw errItems;
+    }
+    // 4. messaggio di successo
+    alert('Ordine salvato correttamente');
+  }catch(err){
+    // 5. gestione errori
+    console.error('Errore Supabase:',err);
+    alert('Errore nel salvataggio su database: '+(err.message||err.error_description||JSON.stringify(err)));
+  }
+}
 function loadOrder(id){let o=db.orders.find(x=>x.id===id);editingOrderId=o.id;setClient(o.client);qs('payment').value=o.payment;qs('country').value=o.country;qs('courier').value=o.courier;qs('shippingCost').value=o.shipping;qs('notes').value=o.notes||'';qs('products').innerHTML='';o.products.forEach(addProduct);document.querySelectorAll('.view').forEach(e=>e.classList.add('hidden'));qs('view-orders').classList.remove('hidden');updatePreview()}
 function newOrder(){editingOrderId=null;['customerName','customerRef','street','streetNo','zip','city','province','vatId','phone','email','notes','payment','country','courier','shippingCost'].forEach(id=>qs(id).value='');qs('products').innerHTML='';addProduct();updatePreview()}
 function visibleOrders(){return currentUser.role==='admin'&&!impersonated?db.orders:db.orders.filter(o=>o.sellerId===activeUser().id)}
