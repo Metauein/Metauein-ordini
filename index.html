@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Metauein Orders V4 - Auth</title>
+  <title>Metauein Orders</title>
   <style>
     :root{
       --bg:#f4f6f8;--card:#ffffff;--ink:#111827;--muted:#6b7280;--line:#e5e7eb;--dark:#0f172a;--gold:#c8a24a;--green:#0f766e;--red:#dc2626;
       --shadow:0 18px 45px rgba(15,23,42,.08);--radius:20px;
+      --st-green:#16a34a;--st-yellow:#d97706;--st-red:#dc2626;--st-blue:#2563eb;
     }
     *{box-sizing:border-box} body{margin:0;background:linear-gradient(135deg,#f6f7f9,#eef2f7);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink)}
     button,input,select,textarea{font:inherit} button{cursor:pointer;border:0}.hidden{display:none!important}.locked{opacity:.45;pointer-events:none}.step-note{font-size:12px;color:#6b7280;margin-top:8px}.invalid{border-color:#dc2626!important;box-shadow:0 0 0 4px rgba(220,38,38,.10)!important}
@@ -17,12 +18,89 @@
     input,select,textarea{width:100%;border:1px solid var(--line);background:#fff;border-radius:13px;padding:12px 13px;outline:none} textarea{min-height:78px;resize:vertical} input:focus,select:focus,textarea:focus{border-color:#94a3b8;box-shadow:0 0 0 4px rgba(148,163,184,.18)}
     .btn{padding:12px 16px;border-radius:14px;background:var(--dark);color:#fff;font-weight:800}.btn.secondary{background:#fff;color:var(--dark);border:1px solid var(--line)}.btn.danger{background:var(--red)}.btn.green{background:var(--green)}.btn.small{padding:8px 10px;border-radius:10px;font-size:12px}.hint{font-size:12px;color:var(--muted);line-height:1.45}.err{background:#fef2f2;color:#991b1b;padding:10px;border-radius:12px;font-size:13px;margin-top:10px}
     .app{min-height:100vh}.topbar{height:72px;background:rgba(255,255,255,.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:10}.topbar .brand{margin:0}.userbox{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:14px}
-    .shell{display:grid;grid-template-columns:250px 1fr;gap:22px;padding:22px}.sidebar{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px;height:calc(100vh - 116px);position:sticky;top:94px;box-shadow:var(--shadow)}.navbtn{width:100%;text-align:left;background:transparent;padding:13px 14px;border-radius:13px;color:#334155;font-weight:750;margin:2px 0}.navbtn.active,.navbtn:hover{background:#0f172a;color:#fff}
+    .shell{display:grid;grid-template-columns:250px 1fr;gap:22px;padding:22px}.sidebar{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px;height:calc(100vh - 116px);position:sticky;top:94px;box-shadow:var(--shadow);overflow:auto}.navbtn{width:100%;text-align:left;background:transparent;padding:13px 14px;border-radius:13px;color:#334155;font-weight:750;margin:2px 0}.navbtn.active,.navbtn:hover{background:#0f172a;color:#fff}
     .grid{display:grid;grid-template-columns:1.05fr .95fr;gap:22px;align-items:start}.panel{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);margin-bottom:18px}.panel h2{font-size:18px;margin:0 0 14px;letter-spacing:-.03em}.row{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.divider{height:1px;background:var(--line);margin:16px 0}.table{width:100%;border-collapse:collapse;font-size:13px}.table th,.table td{border-bottom:1px solid var(--line);padding:10px;text-align:left}.table th{color:#64748b;text-transform:uppercase;font-size:11px;letter-spacing:.07em}.pill{display:inline-flex;padding:4px 8px;border-radius:999px;background:#eef2ff;font-size:12px;color:#3730a3;font-weight:800}.right{text-align:right!important}
-    .product-card{border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:10px;background:#fbfdff}.product-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.preview-wrap{position:sticky;top:94px}.doc{background:#fff;border:1px solid #d9dee8;box-shadow:0 18px 50px rgba(15,23,42,.12);padding:30px;color:#111827;min-height:820px}.doc-head{display:flex;justify-content:space-between;border-bottom:3px solid #111827;padding-bottom:18px;margin-bottom:20px}.doc-logo{display:flex;gap:12px;align-items:center}.doc-logo-mark{width:56px;height:56px;border-radius:10px;background:#111827;color:#fff;display:grid;place-items:center;font-weight:900;border:2px solid var(--gold)}.doc h1{font-size:22px;margin:0}.doc small{color:#475569}.doc-title{text-align:right}.doc-title h2{margin:0;font-size:24px;letter-spacing:-.04em}.doc-section{margin:16px 0}.doc-section h3{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:#64748b;margin:0 0 7px}.doc-table{width:100%;border-collapse:collapse;font-size:12px}.doc-table th{background:#111827;color:#fff;padding:9px;text-align:left}.doc-table td{border-bottom:1px solid #e5e7eb;padding:9px}.totals{margin-left:auto;width:290px;font-size:13px}.totals div{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #e5e7eb}.totals .grand{font-size:17px;font-weight:900;border-bottom:2px solid #111827}.policy{font-size:10.5px;color:#374151;line-height:1.45;border-top:1px solid #e5e7eb;padding-top:12px;margin-top:20px}.muted{color:var(--muted)}
+    .product-card{border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:10px;background:#fbfdff}.product-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.preview-wrap{position:sticky;top:94px}.muted{color:var(--muted)}
     .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.stat{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow)}.stat b{font-size:26px}.stat span{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em;font-weight:800}
+
+    /* ===== Stato / pallini ===== */
+    .dot{display:inline-block;width:12px;height:12px;border-radius:999px;vertical-align:middle;margin-right:6px;box-shadow:0 0 0 3px rgba(0,0,0,.04)}
+    .dot.green{background:var(--st-green)}.dot.yellow{background:var(--st-yellow)}.dot.red{background:var(--st-red)}.dot.blue{background:var(--st-blue)}
+    .status-badge{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:12px}
+    .yn-yes{color:var(--st-red);font-weight:800}.yn-no{color:#64748b;font-weight:700}
+    .tag{display:inline-flex;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.03em}
+    .tag.green{background:#dcfce7;color:#166534}.tag.yellow{background:#fef3c7;color:#92400e}.tag.red{background:#fee2e2;color:#991b1b}.tag.blue{background:#dbeafe;color:#1e40af}
+
+    /* ===== Picking cards ===== */
+    .pick-card{border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;background:#fff;box-shadow:var(--shadow)}
+    .pick-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+    .pick-meta{font-size:13px;color:#475569;line-height:1.6}
+    .pick-prod{font-size:12px;background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-top:8px}
+    .pick-prod table{width:100%;border-collapse:collapse}.pick-prod td{padding:3px 6px;border-bottom:1px solid #eef1f5}
+    .pick-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+    .pick-controls{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;margin-top:12px;font-size:13px}
+
+    /* ===== Chat modale ===== */
+    .modal-back{position:fixed;inset:0;background:rgba(15,23,42,.5);display:flex;align-items:center;justify-content:center;z-index:50;padding:20px}
+    .modal{background:#fff;border-radius:22px;width:min(640px,100%);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(15,23,42,.35);overflow:hidden}
+    .modal-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+    .modal-head h3{margin:0;font-size:17px}.modal-body{padding:18px 20px;overflow:auto;flex:1}
+    .modal-foot{padding:16px 20px;border-top:1px solid var(--line);background:#fbfdff}
+    .msg{border:1px solid var(--line);border-radius:14px;padding:11px 13px;margin-bottom:10px;background:#fff}
+    .msg.mine{background:#eff6ff;border-color:#bfdbfe}
+    .msg.issue{background:#fef2f2;border-color:#fecaca}
+    .msg.decision{background:#ecfdf5;border-color:#a7f3d0}
+    .msg-head{display:flex;justify-content:space-between;gap:8px;font-size:12px;color:#64748b;margin-bottom:5px}
+    .msg-name{font-weight:800;color:#111827}
+    .msg-type{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:800}
+    .msg-prod{font-size:11px;font-weight:800;color:#3730a3;background:#eef2ff;display:inline-block;padding:2px 8px;border-radius:999px;margin-bottom:5px}
+    .msg-alt{margin-top:6px;font-size:12.5px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:7px 9px;color:#9a3412}
+    .msg-body{font-size:13.5px;line-height:1.5;white-space:pre-wrap}
+    .chat-empty{text-align:center;color:#94a3b8;padding:30px 10px;font-size:13px}
+
     @media(max-width:1100px){.shell{grid-template-columns:1fr}.sidebar{position:static;height:auto}.grid{grid-template-columns:1fr}.preview-wrap{position:static}.cards{grid-template-columns:1fr}.row,.row3{grid-template-columns:1fr}}
-    @media print{body{background:#fff}.topbar,.sidebar,.form-area,.no-print{display:none!important}.shell,.grid{display:block;padding:0}.panel,.doc{box-shadow:none;border:0}.preview-wrap{position:static}.doc{padding:0;min-height:auto}.app{display:block}}
+
+    /* ===== Documento enterprise (anteprima + stampa) ===== */
+    .doc{background:#fff;border:1px solid #d9dee8;box-shadow:0 18px 50px rgba(15,23,42,.12);padding:46px 44px;color:#1f2937;min-height:820px;font-size:13px;line-height:1.55}
+    .doc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding-bottom:22px;margin-bottom:26px;border-bottom:2px solid #111827}
+    .doc-brand{display:flex;flex-direction:column;gap:12px;max-width:60%}
+    .doc-logo-img{height:46px;width:auto;max-width:220px;object-fit:contain;display:block}
+    .doc-logo-fallback{width:52px;height:52px;border-radius:10px;background:#111827;color:#fff;display:grid;place-items:center;font-weight:900;border:2px solid var(--gold);font-size:24px}
+    .doc-company{font-size:11.5px;color:#475569;line-height:1.7}
+    .doc-company .cname{font-size:15px;font-weight:800;color:#111827;letter-spacing:-.01em;margin-bottom:2px}
+    .doc-title{text-align:right;min-width:230px}
+    .doc-title h2{margin:0 0 10px;font-size:26px;letter-spacing:-.03em;color:#0f172a;text-transform:uppercase}
+    .doc-meta{font-size:12px;color:#475569;line-height:1.8}
+    .doc-meta .lbl{text-transform:uppercase;letter-spacing:.08em;font-size:10px;color:#94a3b8;font-weight:800}
+    .doc-meta .val{font-weight:800;color:#111827}
+    .doc-parties{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px}
+    .doc-box{border:1px solid #e5e7eb;border-radius:14px;padding:16px 18px;background:#fbfdff}
+    .doc-box h3{font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:#94a3b8;margin:0 0 9px;font-weight:800}
+    .doc-box .pname{font-size:14px;font-weight:800;color:#111827;margin-bottom:3px}
+    .doc-box .pline{font-size:12px;color:#475569;line-height:1.65}
+    .doc-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:24px}
+    .doc-table thead th{background:#0f172a;color:#fff;padding:11px 12px;text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;font-weight:800}
+    .doc-table thead th:first-child{border-radius:10px 0 0 0}.doc-table thead th:last-child{border-radius:0 10px 0 0}
+    .doc-table tbody td{border-bottom:1px solid #eef1f5;padding:11px 12px;color:#1f2937}
+    .doc-table tbody tr:nth-child(even){background:#fafbfc}
+    .doc-pay{display:grid;grid-template-columns:1fr 320px;gap:30px;align-items:start;margin-bottom:20px}
+    .doc-pay-info{font-size:12px;color:#475569;line-height:1.85}
+    .doc-pay-info .lbl{text-transform:uppercase;letter-spacing:.08em;font-size:10px;color:#94a3b8;font-weight:800;display:block;margin-bottom:6px}
+    .totals{font-size:13px}.totals .line{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #e5e7eb}
+    .totals .grand{font-size:18px;font-weight:900;border-bottom:none;border-top:2px solid #111827;margin-top:2px;padding-top:12px;color:#0f172a}
+    .policy{font-size:10px;color:#475569;line-height:1.55;border-top:1px solid #e5e7eb;padding-top:14px;margin-top:30px}
+    .policy b{color:#111827}
+
+    @media print{
+      body{background:#fff}
+      .topbar,.sidebar,.form-area,.no-print,.modal-back{display:none!important}
+      .shell,.grid{display:block;padding:0}
+      .panel{box-shadow:none;border:0;padding:0;margin:0}
+      .preview-wrap{position:static}
+      .panel h2{display:none}
+      .doc{padding:0;min-height:auto;box-shadow:none;border:0}
+      .app{display:block}
+    }
   </style>
 </head>
 <body>
@@ -43,11 +121,13 @@
     </div>
     <div class="shell">
       <aside class="sidebar">
-        <button class="navbtn active" onclick="showView('orders',this)">Nuovo ordine</button>
-        <button class="navbtn" onclick="showView('history',this)">Database ordini</button>
-        <button class="navbtn" onclick="showView('clients',this)">Database clienti</button>
-        <button class="navbtn adminOnly" onclick="showView('users',this)">Area utenti</button>
-        <button class="navbtn" onclick="showView('dashboard',this)">Dashboard</button>
+        <button class="navbtn active" data-nav="orders" onclick="showView('orders',this)">Nuovo ordine</button>
+        <button class="navbtn" data-nav="history" onclick="showView('history',this)">Database ordini</button>
+        <button class="navbtn" data-nav="clients" onclick="showView('clients',this)">Database clienti</button>
+        <button class="navbtn" data-nav="status" onclick="showView('status',this)">Stati ordini</button>
+        <button class="navbtn" data-nav="picking" onclick="showView('picking',this)">Picking</button>
+        <button class="navbtn adminOnly" data-nav="users" onclick="showView('users',this)">Area utenti</button>
+        <button class="navbtn" data-nav="dashboard" onclick="showView('dashboard',this)">Dashboard</button>
       </aside>
       <main>
         <section id="view-orders" class="view">
@@ -83,6 +163,28 @@
 
         <section id="view-history" class="view hidden"><div class="panel"><h2>Database ordini</h2><div class="field"><label>Cerca</label><input id="orderSearch" oninput="renderHistory()" placeholder="cliente, ordine, venditore..."></div><table class="table"><thead><tr><th>Ordine</th><th>Data</th><th>Cliente</th><th>Venditore</th><th class="right">Totale</th><th></th></tr></thead><tbody id="historyRows"></tbody></table></div></section>
         <section id="view-clients" class="view hidden"><div class="panel"><h2>Database clienti</h2><table class="table"><thead><tr><th>Cliente</th><th>Città</th><th>P.IVA</th><th>Telefono</th><th></th></tr></thead><tbody id="clientRows"></tbody></table></div></section>
+
+        <section id="view-status" class="view hidden">
+          <div class="panel">
+            <h2>Stati ordini</h2>
+            <p class="hint">Verde = confermato senza problemi · Giallo = in lavorazione · Rosso = problema segnalato · Blu = pronto. Il venditore vede solo i propri ordini; admin e backoffice vedono tutti.</p>
+            <div class="field" style="max-width:320px"><label>Cerca</label><input id="statusSearch" oninput="renderStatus()" placeholder="codice, cliente, venditore..."></div>
+            <table class="table">
+              <thead><tr><th>Stato</th><th>Codice</th><th>Cliente</th><th>Venditore</th><th>Stato</th><th>Test</th><th>Problema</th><th></th></tr></thead>
+              <tbody id="statusRows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="view-picking" class="view hidden">
+          <div class="panel">
+            <h2>Picking</h2>
+            <p class="hint">Ordini da preparare (confermati, in corso, pronti). Usa “Inizia” per metterli in lavorazione e “Segna pronto” quando l’ordine è completo. Segnala problemi o indisponibilità dalla chat.</p>
+            <div class="field" style="max-width:320px"><label>Cerca</label><input id="pickingSearch" oninput="renderPicking()" placeholder="codice, cliente, venditore..."></div>
+            <div id="pickingList"></div>
+          </div>
+        </section>
+
         <section id="view-users" class="view hidden">
           <div class="panel">
             <h2>Area utenti</h2>
@@ -100,6 +202,19 @@
       </main>
     </div>
   </div>
+
+  <!-- ===== Modale chat ordine ===== -->
+  <div id="chatModal" class="modal-back hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <div><h3 id="chatTitle">Chat ordine</h3><div class="muted" id="chatSub" style="font-size:12px"></div></div>
+        <button class="btn secondary small" onclick="closeChat()">Chiudi</button>
+      </div>
+      <div class="modal-body" id="chatBody"></div>
+      <div class="modal-foot" id="chatFoot"></div>
+    </div>
+  </div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 /* ===== Configurazione Supabase ===== */
@@ -109,17 +224,24 @@ const sb=(window.supabase&&SUPABASE_URL.indexOf('INCOLLA')===-1)?window.supabase
 </script>
 <script>
 const COMPANY={name:'Metauein Srl',address:'Via Sempione 161, Pero, 20016',vat:'P.IVA 098XXXXXXXX',site:'metauein.it'};
-let db, currentUser, impersonated=null, editingOrderId=null, profileUsers=[];
+const LOGO_URL='metauein-logo.png';
+let db={clients:[]}, currentUser, impersonated=null, editingOrderId=null, profileUsers=[];
+let remoteOrders=[];        // ordini letti da Supabase (per Stati / Picking / viste ordini)
+let chatState={orderId:null,orderCode:null,order:null,channel:null};
 const qs=id=>document.getElementById(id);
 const money=n=>'€ '+(Number(n)||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-function defaultDb(){return {users:[],clients:[],orders:[],nextOrderNumber:1}}
-function loadDb(){db=JSON.parse(localStorage.getItem('metaueinOrdersV2')||'null')||defaultDb(); if(!db.nextOrderNumber){db.nextOrderNumber=(db.orders?.length||0)+1} saveDb()}
-function saveDb(){localStorage.setItem('metaueinOrdersV2',JSON.stringify(db))}
+/* db è un semplice contenitore in memoria. La fonte dati è Supabase:
+   - clients  -> tabella public.clients (loadClientsFromSupabase)
+   - orders   -> array remoteOrders (loadOrdersFromSupabase) */
+
+/* ===== Ruoli ===== */
 function isAdmin(){return currentUser?.role==='admin'}
 function isBackoffice(){return currentUser?.role==='backoffice'}
+function isPicker(){return currentUser?.role==='picker'}
+function isSeller(){return currentUser?.role==='venditore'}
 function canSeeAll(){return (isAdmin() || isBackoffice()) && !impersonated}
-function roleLabel(role){return role==='admin'?'Admin':role==='backoffice'?'Backoffice':'Venditore'}
+function roleLabel(role){return role==='admin'?'Admin':role==='backoffice'?'Backoffice':role==='picker'?'Picker':'Venditore'}
 
 async function login(){
   if(!sb){
@@ -152,7 +274,6 @@ async function login(){
     return;
   }
 
-  loadDb();
   currentUser={
     id:profile.id,
     name:profile.name,
@@ -181,7 +302,6 @@ async function restoreSession(){
 
   if(error || !profile)return;
 
-  loadDb();
   currentUser={
     id:profile.id,
     name:profile.name,
@@ -205,10 +325,36 @@ function activeUser(){return impersonated||currentUser}
 
 async function initApp(){
   qs('who').innerHTML=`${esc(currentUser.name)} <span class="pill">${roleLabel(currentUser.role)}</span>`;
-  document.querySelectorAll('.adminOnly').forEach(e=>e.style.display=isAdmin()?'block':'none');
+  applyNavVisibility();
   await loadProfilesForAdmin();
+  await loadClientsFromSupabase();
+  await loadOrdersFromSupabase();
   renderAll();
-  newOrder();
+  // Il picker parte sulla sua dashboard, non sul form ordine.
+  if(isPicker()){
+    const pbtn=document.querySelector('[data-nav="picking"]');
+    showView('picking', pbtn||document.querySelector('.navbtn'));
+  }else{
+    newOrder();
+  }
+}
+
+/* Mostra/nasconde le voci di menu in base al ruolo */
+function applyNavVisibility(){
+  const role=currentUser.role;
+  const vis={
+    orders:   role!=='picker',
+    history:  role!=='picker',
+    clients:  role!=='picker',
+    status:   role!=='picker',          // admin, venditore, backoffice
+    picking:  role==='picker'||role==='admin',
+    users:    role==='admin',
+    dashboard:role!=='picker'
+  };
+  document.querySelectorAll('.navbtn').forEach(btn=>{
+    const k=btn.dataset.nav;
+    if(k in vis) btn.style.display = vis[k] ? 'block' : 'none';
+  });
 }
 
 async function loadProfilesForAdmin(){
@@ -218,7 +364,83 @@ async function loadProfilesForAdmin(){
   if(!error && data) profileUsers=data;
 }
 
-function showView(v,btn){document.querySelectorAll('.view').forEach(e=>e.classList.add('hidden'));qs('view-'+v).classList.remove('hidden');document.querySelectorAll('.navbtn').forEach(e=>e.classList.remove('active'));btn.classList.add('active');renderAll()}
+/* ===== Caricamento ordini da Supabase ===== */
+async function loadOrdersFromSupabase(){
+  remoteOrders=[];
+  if(!sb)return;
+  let query=sb.from('orders')
+    .select('id,order_code,customer_name,client_data,products_data,payment_method,courier,country,notes,shipping,subtotal_amount,total_amount,status,has_issue,needs_test,picker_notes,created_by,sales_rep,created_at')
+    .order('created_at',{ascending:false});
+  // Il venditore vede solo i propri ordini (filtro lato query oltre che RLS).
+  if(isSeller()){ query=query.eq('created_by',currentUser.id); }
+  const {data,error}=await query;
+  if(error){ console.error('loadOrdersFromSupabase:',error); return; }
+  remoteOrders=(data||[]).map(normalizeRemoteOrder);
+}
+
+/* ===== Caricamento clienti da Supabase (tabella public.clients) ===== */
+async function loadClientsFromSupabase(){
+  db.clients=[];
+  if(!sb)return;
+  const {data,error}=await sb.from('clients').select('*').order('created_at',{ascending:false});
+  if(error){ console.error('loadClientsFromSupabase:',error); return; }
+  // Mappa le colonne DB (snake_case) verso lo shape usato dalla UI (camelCase)
+  db.clients=(data||[]).map(r=>({
+    id:r.id,
+    name:r.name||'',
+    ref:r.ref||'',
+    street:r.street||'',
+    streetNo:r.street_no||'',
+    zip:r.zip||'',
+    city:r.city||'',
+    province:r.province||'',
+    vatId:r.vat_id||'',
+    phone:r.phone||'',
+    email:r.email||'',
+    ownerId:r.owner_id,
+    ownerName:r.owner_name||''
+  }));
+}
+
+/* Adatta una riga DB allo shape usato dalla UI */
+function normalizeRemoteOrder(r){
+  const client=r.client_data||{};
+  const products=Array.isArray(r.products_data)?r.products_data:(r.products_data?.items||[]);
+  return {
+    dbId:r.id,
+    id:r.order_code||('ORD-'+r.id),
+    order_code:r.order_code||('ORD-'+r.id),
+    date:r.created_at?new Date(r.created_at).toLocaleDateString('it-IT'):'',
+    sellerId:r.created_by,
+    sellerName:r.sales_rep||client.sellerName||'—',
+    client:{
+      name:r.customer_name||client.name||'',
+      ref:client.ref||'',street:client.street||'',streetNo:client.streetNo||'',
+      zip:client.zip||'',city:client.city||'',province:client.province||'',
+      vatId:client.vatId||'',phone:client.phone||'',email:client.email||''
+    },
+    products:Array.isArray(products)?products:[],
+    payment:r.payment_method||'',
+    country:r.country||'',
+    courier:r.courier||'',
+    shipping:Number(r.shipping)||0,
+    notes:r.notes||'',
+    subtotal:Number(r.subtotal_amount)||0,
+    total:Number(r.total_amount)||0,
+    status:r.status||'confirmed',
+    has_issue:!!r.has_issue,
+    needs_test:!!r.needs_test,
+    picker_notes:r.picker_notes||''
+  };
+}
+
+function showView(v,btn){
+  document.querySelectorAll('.view').forEach(e=>e.classList.add('hidden'));
+  qs('view-'+v).classList.remove('hidden');
+  document.querySelectorAll('.navbtn').forEach(e=>e.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  renderAll();
+}
 function esc(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
 
 function validateClient(show=false){let ok=true;['customerName','street','streetNo','zip','city'].forEach(id=>{let el=qs(id);let miss=!el.value.trim();el.classList.toggle('invalid',miss);if(miss)ok=false});if(show&&!ok)alert('Prima completa l’anagrafica cliente: nome/azienda, via, civico, CAP e città.');return ok}
@@ -247,45 +469,80 @@ function total(){return subtotal()+(+qs('shippingCost').value||0)}
 function clientData(){return {name:qs('customerName').value,ref:qs('customerRef').value,street:qs('street').value,streetNo:qs('streetNo').value,zip:qs('zip').value,city:qs('city').value,province:qs('province').value,vatId:qs('vatId').value,phone:qs('phone').value,email:qs('email').value}}
 function setClient(c){['customerName','customerRef','street','streetNo','zip','city','province','vatId','phone','email'].forEach((id,i)=>qs(id).value=[c.name,c.ref,c.street,c.streetNo,c.zip,c.city,c.province,c.vatId,c.phone,c.email][i]||'');updatePreview()}
 
-function saveClient(){
+async function saveClient(){
   let c=clientData();
   if(!c.name||!c.street||!c.streetNo||!c.zip||!c.city){alert('Compila almeno nome, via, civico, CAP e città.');return}
-  let ex=db.clients.find(x=>x.name.toLowerCase()===c.name.toLowerCase()&&x.ownerId===activeUser().id);
-  if(ex) Object.assign(ex,c);
-  else db.clients.push({...c,id:'c_'+Date.now(),ownerId:activeUser().id,ownerName:activeUser().name});
-  saveDb();
-  renderClients();
-  renderDashboard();
-  alert('Anagrafica salvata');
+  if(!sb){alert('Supabase non configurato: impossibile salvare l’anagrafica.');return}
+
+  const ownerId=activeUser().id;
+  const ownerName=activeUser().name;
+  // Riga DB in snake_case
+  const dbRow={
+    name:c.name, ref:c.ref, street:c.street, street_no:c.streetNo,
+    zip:c.zip, city:c.city, province:c.province, vat_id:c.vatId,
+    phone:c.phone, email:c.email
+  };
+
+  try{
+    // Esiste già un cliente con stesso nome e owner_id? -> aggiorna
+    const {data:found,error:findErr}=await sb.from('clients')
+      .select('id').eq('owner_id',ownerId).ilike('name',c.name).limit(1);
+    if(findErr)throw findErr;
+
+    if(found && found.length){
+      const {error:updErr}=await sb.from('clients').update(dbRow).eq('id',found[0].id);
+      if(updErr)throw updErr;
+    }else{
+      const {error:insErr}=await sb.from('clients')
+        .insert({...dbRow, owner_id:ownerId, owner_name:ownerName});
+      if(insErr)throw insErr;
+    }
+
+    await loadClientsFromSupabase();
+    renderClients();
+    renderDashboard();
+    alert('Anagrafica salvata');
+  }catch(err){
+    console.error('saveClient:',err);
+    alert('Errore nel salvataggio anagrafica: '+(err.message||JSON.stringify(err)));
+  }
 }
 
 function renderClients(){
   let sel=qs('clientSelect');
+  if(!sel)return;
   sel.innerHTML='<option value="">Seleziona cliente salvato...</option>';
   let list=canSeeAll()?db.clients:db.clients.filter(c=>c.ownerId===currentUser.id);
   list.forEach(c=>sel.innerHTML+=`<option value="${c.id}">${esc(c.name)} — ${esc(c.city||'')}</option>`);
-  qs('clientRows').innerHTML=list.map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.city||'')}</td><td>${esc(c.vatId||'-')}</td><td>${esc(c.phone||'-')}</td><td><button class="btn small secondary" onclick="setClient(db.clients.find(x=>x.id==='${c.id}'));showView('orders',document.querySelector('.navbtn'))">Usa</button> <button class="btn small danger" onclick="deleteClient('${c.id}')">Cancella</button></td></tr>`).join('')
+  qs('clientRows').innerHTML=list.map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.city||'')}</td><td>${esc(c.vatId||'-')}</td><td>${esc(c.phone||'-')}</td><td><button class="btn small secondary" onclick="setClient(db.clients.find(x=>x.id==='${c.id}'));showView('orders',document.querySelector('[data-nav=orders]'))">Usa</button> <button class="btn small danger" onclick="deleteClient('${c.id}')">Cancella</button></td></tr>`).join('')
 }
 
 function loadClientFromSelect(){let c=db.clients.find(x=>x.id===qs('clientSelect').value); if(c)setClient(c)}
-function nextOrderId(){return 'ORD-'+new Date().getFullYear()+'-'+String(db.nextOrderNumber||1).padStart(5,'0')}
-function orderData(){return {id:editingOrderId||nextOrderId(),date:new Date().toLocaleDateString('it-IT'),sellerId:activeUser().id,sellerName:activeUser().name,client:clientData(),products:getProducts(),payment:qs('payment').value,country:qs('country').value,courier:qs('courier').value,shipping:+qs('shippingCost').value||0,notes:qs('notes').value,subtotal:subtotal(),iva:ivaTotal(),total:total()}}
+
+/* Codice ordine progressivo (order_code) calcolato dagli ordini esistenti su Supabase */
+function nextOrderCode(){
+  const year=new Date().getFullYear();
+  const prefix='ORD-'+year+'-';
+  let max=0;
+  remoteOrders.forEach(o=>{
+    const code=o.order_code||o.id||'';
+    if(code.startsWith(prefix)){
+      const n=parseInt(code.slice(prefix.length),10);
+      if(!isNaN(n) && n>max)max=n;
+    }
+  });
+  return prefix+String(max+1).padStart(5,'0');
+}
+
+function orderData(){return {id:editingOrderId||nextOrderCode(),date:new Date().toLocaleDateString('it-IT'),sellerId:activeUser().id,sellerName:activeUser().name,client:clientData(),products:getProducts(),payment:qs('payment').value,country:qs('country').value,courier:qs('courier').value,shipping:+qs('shippingCost').value||0,notes:qs('notes').value,subtotal:subtotal(),iva:ivaTotal(),total:total()}}
 
 function saveOrder(){
   if(!formReadyForDocument(true))return;
-  let isNew=!editingOrderId;
-  let o=orderData();
-  let i=db.orders.findIndex(x=>x.id===o.id);
-  if(i>=0)db.orders[i]=o;else db.orders.unshift(o);
-  if(isNew)db.nextOrderNumber=(db.nextOrderNumber||1)+1;
-  saveDb();
-  editingOrderId=o.id;
-  renderAll();
-  saveOrderToSupabase(o);
+  saveOrderToSupabase(orderData());
 }
 
 async function saveOrderToSupabase(o){
-  if(!sb){alert('Ordine salvato (solo locale: Supabase non configurato).');return}
+  if(!sb){alert('Supabase non configurato: impossibile salvare.');return}
   try{
     const c=o.client;
     const shipping_address=[
@@ -294,15 +551,27 @@ async function saveOrderToSupabase(o){
       c.province
     ].filter(Boolean).join(', ');
 
+    const orderCode=o.id;
+
     const {data:ordine,error:errOrdine}=await sb
       .from('orders')
       .insert({
+        order_code:orderCode,
         customer_name:c.name||'',
         shipping_address:shipping_address,
+        client_data:c,
+        products_data:o.products,
         payment_method:o.payment||'',
         courier:o.courier||'',
+        country:o.country||'',
         notes:o.notes||'',
-        total_amount:o.total,
+        shipping:o.shipping||0,
+        subtotal_amount:o.subtotal||0,
+        total_amount:o.total||0,
+        status:'confirmed',
+        has_issue:false,
+        needs_test:false,
+        picker_notes:'',
         created_by:o.sellerId,
         sales_rep:o.sellerName
       })
@@ -316,6 +585,8 @@ async function saveOrderToSupabase(o){
       order_id:orderId,
       product:p.name||'',
       gb:p.gb||'',
+      grade:p.grade||'',
+      color:p.color||'',
       quantity:p.qty||0,
       vat:p.ivaCode||'',
       sale_price:p.price||0
@@ -326,54 +597,343 @@ async function saveOrderToSupabase(o){
       if(errItems)throw errItems;
     }
 
+    await loadOrdersFromSupabase();
+    renderAll();
     alert('Ordine salvato correttamente');
+    newOrder();
   }catch(err){
     console.error('Errore Supabase:',err);
     alert('Errore nel salvataggio su database: '+(err.message||err.error_description||JSON.stringify(err)));
   }
 }
 
-function loadOrder(id){
-  let o=db.orders.find(x=>x.id===id);
-  editingOrderId=o.id;
+/* Apre un ordine remoto nel form (sola lettura dei dati salvati, ricompila il form) */
+function loadOrder(orderCode){
+  let o=remoteOrders.find(x=>x.order_code===orderCode || x.id===orderCode);
+  if(!o){alert('Ordine non trovato.');return}
+  editingOrderId=null; // i nuovi salvataggi creano sempre un nuovo record
   setClient(o.client);
-  qs('payment').value=o.payment;
-  qs('country').value=o.country;
-  qs('courier').value=o.courier;
-  qs('shippingCost').value=o.shipping;
+  qs('payment').value=o.payment||'';
+  qs('country').value=o.country||'';
+  qs('courier').value=o.courier||'';
+  qs('shippingCost').value=o.shipping||'';
   qs('notes').value=o.notes||'';
   qs('products').innerHTML='';
-  o.products.forEach(addProduct);
-  document.querySelectorAll('.view').forEach(e=>e.classList.add('hidden'));
-  qs('view-orders').classList.remove('hidden');
+  (o.products||[]).forEach(addProduct);
+  if(!o.products||!o.products.length)addProduct();
+  showView('orders',document.querySelector('[data-nav=orders]'));
   updatePreview();
 }
 
 function newOrder(){
   editingOrderId=null;
-  ['customerName','customerRef','street','streetNo','zip','city','province','vatId','phone','email','notes','payment','country','courier','shippingCost'].forEach(id=>qs(id).value='');
-  qs('products').innerHTML='';
-  addProduct();
+  ['customerName','customerRef','street','streetNo','zip','city','province','vatId','phone','email','notes','payment','country','courier','shippingCost'].forEach(id=>{if(qs(id))qs(id).value=''});
+  if(qs('products')){qs('products').innerHTML='';addProduct();}
   updatePreview();
 }
 
-function visibleOrders(){return canSeeAll()?db.orders:db.orders.filter(o=>o.sellerId===activeUser().id)}
-
-function renderHistory(){
-  let q=(qs('orderSearch')?.value||'').toLowerCase();
-  let rows=visibleOrders().filter(o=>(o.id+o.client.name+o.sellerName).toLowerCase().includes(q));
-  qs('historyRows').innerHTML=rows.map(o=>`<tr><td>${esc(o.id)}</td><td>${esc(o.date)}</td><td>${esc(o.client.name)}</td><td>${esc(o.sellerName)}</td><td class="right">${money(o.total)}</td><td><button class="btn small secondary" onclick="loadOrder('${o.id}')">Apri</button> <button class="btn small danger" onclick="deleteOrder('${o.id}')">Cancella</button></td></tr>`).join('')
+/* ===== Ordini visibili (da Supabase) ===== */
+function visibleOrders(){
+  if(canSeeAll())return remoteOrders;
+  return remoteOrders.filter(o=>o.sellerId===activeUser().id);
 }
 
+function renderHistory(){
+  if(!qs('historyRows'))return;
+  let q=(qs('orderSearch')?.value||'').toLowerCase();
+  let rows=visibleOrders().filter(o=>((o.id||'')+(o.client.name||'')+(o.sellerName||'')).toLowerCase().includes(q));
+  qs('historyRows').innerHTML=rows.map(o=>`<tr><td>${esc(o.id)}</td><td>${esc(o.date)}</td><td>${esc(o.client.name)}</td><td>${esc(o.sellerName)}</td><td class="right">${money(o.total)}</td><td><button class="btn small secondary" onclick="loadOrder('${esc(o.order_code)}')">Apri</button></td></tr>`).join('') || `<tr><td colspan="6"><span class="muted">Nessun ordine.</span></td></tr>`;
+}
+
+/* ===== STATI ORDINI ===== */
+function statusInfo(o){
+  if(o.has_issue) return {color:'red',label:'Problema',tag:'red'};
+  if(o.status==='ready') return {color:'blue',label:'Pronto',tag:'blue'};
+  if(o.status==='in_progress') return {color:'yellow',label:'In corso',tag:'yellow'};
+  return {color:'green',label:'Confermato',tag:'green'};
+}
+function statusText(o){
+  if(o.status==='ready')return'Pronto';
+  if(o.status==='in_progress')return'In corso';
+  return'Confermato';
+}
+function renderStatus(){
+  if(!qs('statusRows'))return;
+  if(isPicker())return; // picker non vede questa pagina
+  let q=(qs('statusSearch')?.value||'').toLowerCase();
+  let rows=visibleOrders().filter(o=>((o.id||'')+(o.client.name||'')+(o.sellerName||'')).toLowerCase().includes(q));
+  qs('statusRows').innerHTML=rows.map(o=>{
+    const si=statusInfo(o);
+    return `<tr>
+      <td><span class="dot ${si.color}" title="${si.label}"></span></td>
+      <td><b>${esc(o.id)}</b></td>
+      <td>${esc(o.client.name||'—')}</td>
+      <td>${esc(o.sellerName||'—')}</td>
+      <td><span class="tag ${si.tag}">${esc(statusText(o))}</span></td>
+      <td>${o.needs_test?'<span class="yn-yes">Sì</span>':'<span class="yn-no">No</span>'}</td>
+      <td>${o.has_issue?'<span class="yn-yes">Sì</span>':'<span class="yn-no">No</span>'}</td>
+      <td><button class="btn small secondary" onclick="openChat('${esc(o.order_code)}')">Apri chat</button></td>
+    </tr>`;
+  }).join('') || `<tr><td colspan="8"><span class="muted">Nessun ordine.</span></td></tr>`;
+}
+
+/* ===== PICKING ===== */
+function pickingOrders(){
+  // picker e admin vedono tutti gli ordini confirmed / in_progress / ready
+  return remoteOrders.filter(o=>['confirmed','in_progress','ready'].includes(o.status));
+}
+function renderPicking(){
+  if(!qs('pickingList'))return;
+  if(!(isPicker()||isAdmin())){qs('pickingList').innerHTML='<span class="muted">Accesso non consentito.</span>';return;}
+  let q=(qs('pickingSearch')?.value||'').toLowerCase();
+  let list=pickingOrders().filter(o=>((o.id||'')+(o.client.name||'')+(o.sellerName||'')).toLowerCase().includes(q));
+  if(!list.length){qs('pickingList').innerHTML='<span class="muted">Nessun ordine da preparare.</span>';return;}
+  qs('pickingList').innerHTML=list.map(o=>{
+    const si=statusInfo(o);
+    const prodRows=(o.products||[]).map(p=>`<tr><td>${esc(p.name||'-')}</td><td>${esc(p.gb||'-')}</td><td>${esc(p.color||'-')}</td><td>${esc(p.grade||'-')}</td><td>x${p.qty||0}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">Nessun prodotto</td></tr>';
+    return `<div class="pick-card" data-code="${esc(o.order_code)}">
+      <div class="pick-top">
+        <div>
+          <div style="font-size:16px;font-weight:800"><span class="dot ${si.color}"></span>${esc(o.id)}</div>
+          <div class="pick-meta">
+            Cliente: <b>${esc(o.client.name||'—')}</b><br>
+            Venditore: ${esc(o.sellerName||'—')}<br>
+            Stato: <span class="tag ${si.tag}">${esc(statusText(o))}</span>
+            &nbsp;Test: ${o.needs_test?'<span class="yn-yes">Sì</span>':'<span class="yn-no">No</span>'}
+            &nbsp;Problema: ${o.has_issue?'<span class="yn-yes">Sì</span>':'<span class="yn-no">No</span>'}
+          </div>
+        </div>
+        <div style="text-align:right">
+          <button class="btn small secondary" onclick="openChat('${esc(o.order_code)}')">Apri chat / problema</button>
+        </div>
+      </div>
+      <div class="pick-prod">
+        <table><thead><tr><th>Prodotto</th><th>GB</th><th>Colore</th><th>Grado</th><th>Q.tà</th></tr></thead><tbody>${prodRows}</tbody></table>
+      </div>
+      <div class="pick-controls">
+        <label style="display:flex;align-items:center;gap:7px;font-weight:700">
+          <input type="checkbox" style="width:auto" ${o.needs_test?'checked':''} onchange="setNeedsTest('${esc(o.order_code)}',this.checked)"> Necessita test
+        </label>
+        <div></div>
+        <label style="font-weight:700;align-self:start">Note picker</label>
+        <textarea id="pn_${esc(o.order_code)}" placeholder="Note interne di picking..." style="min-height:54px">${esc(o.picker_notes||'')}</textarea>
+      </div>
+      <div class="pick-actions">
+        <button class="btn small" onclick="pickStart('${esc(o.order_code)}')">Inizia</button>
+        <button class="btn small green" onclick="pickReady('${esc(o.order_code)}')">Segna pronto</button>
+        <button class="btn small secondary" onclick="savePickerNotes('${esc(o.order_code)}')">Salva note</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function getRemoteByCode(code){return remoteOrders.find(o=>o.order_code===code || o.id===code)}
+
+async function updateOrderFields(code,fields){
+  const o=getRemoteByCode(code);
+  if(!o){alert('Ordine non trovato.');return false}
+  const {error}=await sb.from('orders').update(fields).eq('id',o.dbId);
+  if(error){console.error(error);alert('Errore aggiornamento ordine: '+(error.message||JSON.stringify(error)));return false}
+  Object.assign(o,normalizeFieldsToLocal(fields,o));
+  return true;
+}
+function normalizeFieldsToLocal(fields,o){
+  const m={};
+  if('status'in fields)m.status=fields.status;
+  if('has_issue'in fields)m.has_issue=fields.has_issue;
+  if('needs_test'in fields)m.needs_test=fields.needs_test;
+  if('picker_notes'in fields)m.picker_notes=fields.picker_notes;
+  return m;
+}
+
+async function pickStart(code){
+  if(await updateOrderFields(code,{status:'in_progress'})){renderPicking();renderStatus();}
+}
+async function pickReady(code){
+  if(await updateOrderFields(code,{status:'ready',has_issue:false})){renderPicking();renderStatus();}
+}
+async function setNeedsTest(code,val){
+  await updateOrderFields(code,{needs_test:!!val});
+  renderStatus();
+}
+async function savePickerNotes(code){
+  const ta=qs('pn_'+code);
+  const val=ta?ta.value:'';
+  if(await updateOrderFields(code,{picker_notes:val})){alert('Note picker salvate');}
+}
+
+/* ===== CHAT ORDINE ===== */
+function canOpenChat(o){
+  if(isAdmin())return true;
+  if(isBackoffice())return true;           // lettura
+  if(isPicker())return true;               // ordini in picking
+  if(isSeller())return o.sellerId===currentUser.id; // solo i propri
+  return false;
+}
+function canWriteChat(){return isAdmin()||isSeller()||isPicker()} // backoffice sola lettura
+
+async function openChat(code){
+  const o=getRemoteByCode(code);
+  if(!o){alert('Ordine non trovato.');return}
+  if(!canOpenChat(o)){alert('Non hai accesso alla chat di questo ordine.');return}
+  chatState={orderId:o.dbId,orderCode:o.order_code,order:o};
+  qs('chatTitle').textContent='Chat ordine '+o.order_code;
+  qs('chatSub').textContent=(o.client.name||'')+' · '+statusText(o)+(o.has_issue?' · PROBLEMA':'');
+  qs('chatModal').classList.remove('hidden');
+  buildChatComposer();
+  await loadChatMessages();
+}
+function closeChat(){
+  qs('chatModal').classList.add('hidden');
+  chatState={orderId:null,orderCode:null,order:null};
+}
+
+async function loadChatMessages(){
+  const body=qs('chatBody');
+  body.innerHTML='<div class="chat-empty">Caricamento messaggi...</div>';
+  const {data,error}=await sb.from('order_messages')
+    .select('*').eq('order_id',chatState.orderId).order('created_at',{ascending:true});
+  if(error){body.innerHTML='<div class="chat-empty">Errore nel caricamento dei messaggi.</div>';console.error(error);return;}
+  if(!data||!data.length){body.innerHTML='<div class="chat-empty">Nessun messaggio. Inizia la conversazione.</div>';return;}
+  body.innerHTML=data.map(renderMsg).join('');
+  body.scrollTop=body.scrollHeight;
+}
+function typeLabel(t){
+  return t==='unavailable_no_alternative'?'Non disponibile — nessuna alternativa'
+    :t==='unavailable_with_alternative'?'Non disponibile — con alternativa'
+    :t==='decision'?'Decisione'
+    :'Messaggio';
+}
+function renderMsg(m){
+  const mine=m.sender_id===currentUser.id;
+  let cls='msg';
+  if(m.message_type==='decision')cls+=' decision';
+  else if(m.message_type==='unavailable_no_alternative'||m.message_type==='unavailable_with_alternative')cls+=' issue';
+  else if(mine)cls+=' mine';
+  const when=m.created_at?new Date(m.created_at).toLocaleString('it-IT'):'';
+  return `<div class="${cls}">
+    ${m.product_label?`<div class="msg-prod">${esc(m.product_label)}</div>`:''}
+    <div class="msg-head">
+      <span class="msg-name">${esc(m.sender_name||'—')} <span class="muted" style="font-weight:600">· ${esc(roleLabel(m.sender_role))}</span></span>
+      <span>${esc(when)}</span>
+    </div>
+    <div class="msg-type muted">${esc(typeLabel(m.message_type))}</div>
+    <div class="msg-body">${esc(m.message||'')}</div>
+    ${m.alternative_text?`<div class="msg-alt"><b>Alternativa proposta:</b> ${esc(m.alternative_text)}</div>`:''}
+  </div>`;
+}
+
+function buildChatComposer(){
+  const foot=qs('chatFoot');
+  const o=chatState.order;
+  if(isBackoffice()){
+    foot.innerHTML='<div class="muted" style="font-size:12.5px">Accesso in sola lettura (backoffice).</div>';
+    return;
+  }
+  if(isPicker()){
+    const prodOpts=(o.products||[]).map((p,i)=>`<option value="${i}">${esc(p.name||'Prodotto '+(i+1))}${p.gb?' · '+esc(p.gb):''}</option>`).join('');
+    foot.innerHTML=`
+      <div class="row3" style="gap:10px">
+        <div class="field" style="margin:0"><label>Prodotto</label><select id="chatProd"><option value="">— Nessuno —</option>${prodOpts}</select></div>
+        <div class="field" style="margin:0"><label>Tipo messaggio</label>
+          <select id="chatType" onchange="toggleAltField()">
+            <option value="normal">Messaggio normale</option>
+            <option value="unavailable_no_alternative">Non disponibile (no alternativa)</option>
+            <option value="unavailable_with_alternative">Non disponibile (con alternativa)</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0;align-self:end"><button class="btn" style="width:100%" onclick="sendPickerMessage()">Invia</button></div>
+      </div>
+      <div class="field" style="margin:8px 0 0"><label>Messaggio</label><textarea id="chatMsg" placeholder="Scrivi qui..."></textarea></div>
+      <div class="field hidden" id="chatAltWrap" style="margin:8px 0 0"><label>Alternativa proposta</label><textarea id="chatAlt" placeholder="Es. disponibile stesso modello 256GB colore nero"></textarea></div>`;
+    return;
+  }
+  // admin o venditore: messaggio normale + decisione
+  foot.innerHTML=`
+    <div class="row" style="gap:10px">
+      <div class="field" style="margin:0"><label>Tipo</label>
+        <select id="chatType"><option value="normal">Messaggio normale</option><option value="decision">Decisione</option></select>
+      </div>
+      <div class="field" style="margin:0;align-self:end"><button class="btn" style="width:100%" onclick="sendStaffMessage()">Invia</button></div>
+    </div>
+    <div class="field" style="margin:8px 0 0"><label>Messaggio</label><textarea id="chatMsg" placeholder="Scrivi qui..."></textarea></div>`;
+}
+function toggleAltField(){
+  const t=qs('chatType')?.value;
+  const wrap=qs('chatAltWrap');
+  if(!wrap)return;
+  wrap.classList.toggle('hidden', t!=='unavailable_with_alternative');
+}
+
+async function insertMessage(payload){
+  const base={
+    order_id:chatState.orderId,
+    order_code:chatState.orderCode,
+    sender_id:currentUser.id,
+    sender_name:currentUser.name,
+    sender_role:currentUser.role
+  };
+  const {error}=await sb.from('order_messages').insert({...base,...payload});
+  if(error){console.error(error);alert('Errore invio messaggio: '+(error.message||JSON.stringify(error)));return false}
+  return true;
+}
+
+async function sendPickerMessage(){
+  const type=qs('chatType').value;
+  const msg=(qs('chatMsg').value||'').trim();
+  const prodIdx=qs('chatProd').value;
+  const alt=(qs('chatAlt')?.value||'').trim();
+  if(!msg){alert('Scrivi un messaggio.');return}
+  if(type==='unavailable_with_alternative' && !alt){alert('Indica l’alternativa proposta.');return}
+
+  let product_label=null, order_item_id=null;
+  if(prodIdx!==''){
+    const p=(chatState.order.products||[])[+prodIdx];
+    if(p)product_label=[p.name,p.gb,p.color].filter(Boolean).join(' · ');
+  }
+
+  const ok=await insertMessage({
+    order_item_id,
+    product_label,
+    message_type:type,
+    message:msg,
+    alternative_text:type==='unavailable_with_alternative'?alt:null
+  });
+  if(!ok)return;
+
+  // Se è una segnalazione di indisponibilità → ordine in problema e in lavorazione
+  if(type==='unavailable_no_alternative' || type==='unavailable_with_alternative'){
+    await updateOrderFields(chatState.orderCode,{has_issue:true,status:'in_progress'});
+    qs('chatSub').textContent=(chatState.order.client.name||'')+' · '+statusText(chatState.order)+' · PROBLEMA';
+    renderPicking();renderStatus();
+  }
+  qs('chatMsg').value=''; if(qs('chatAlt'))qs('chatAlt').value='';
+  await loadChatMessages();
+}
+
+async function sendStaffMessage(){
+  const type=qs('chatType').value; // normal | decision
+  const msg=(qs('chatMsg').value||'').trim();
+  if(!msg){alert('Scrivi un messaggio.');return}
+  // solo admin e venditore collegato possono prendere decisioni
+  if(type==='decision' && !(isAdmin()|| (isSeller() && chatState.order.sellerId===currentUser.id))){
+    alert('Solo admin o il venditore collegato può inviare una decisione.');return;
+  }
+  const ok=await insertMessage({message_type:type,message:msg});
+  if(!ok)return;
+  qs('chatMsg').value='';
+  await loadChatMessages();
+}
+
+/* ===== Area utenti / dashboard ===== */
 function renderUsers(){
+  if(!qs('userRows'))return;
   if(!isAdmin())return;
   qs('userRows').innerHTML=profileUsers.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.username||'-')}</td><td>${esc(roleLabel(u.role))}</td><td><span class="muted">${esc(String(u.id).slice(0,8))}...</span></td></tr>`).join('') || `<tr><td colspan="4"><span class="muted">Nessun profilo leggibile. Controlla le policy RLS di profiles.</span></td></tr>`;
 }
 
-function addUser(){alert('Per sicurezza i nuovi utenti si creano da Supabase → Authentication → Users, poi si aggiungono in profiles. Non dal browser pubblico.')}
-function impersonate(id){alert('Impersonificazione disattivata con Supabase Auth. Per testare un utente fai logout e login con la sua email.')}
-
 function renderDashboard(){
+  if(!qs('statOrders'))return;
   let orders=visibleOrders();
   let clients=canSeeAll()?db.clients:db.clients.filter(c=>c.ownerId===activeUser().id);
   qs('statOrders').textContent=orders.length;
@@ -384,44 +944,101 @@ function renderDashboard(){
     body.innerHTML=clients.map(c=>{
       let docs=orders.filter(o=>(o.client?.name||'').toLowerCase()===c.name.toLowerCase());
       let tot=docs.reduce((s,o)=>s+o.total,0);
-      return `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.city||'-')}</td><td>${docs.length?docs.map(o=>`<button class="btn small secondary" onclick="loadOrder('${o.id}')">${esc(o.id)}</button>`).join(' '):'<span class="muted">Nessun documento</span>'}</td><td class="right">${money(tot)}</td><td><button class="btn small danger" onclick="deleteClient('${c.id}')">Cancella anagrafica</button></td></tr>`
+      return `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.city||'-')}</td><td>${docs.length?docs.map(o=>`<button class="btn small secondary" onclick="loadOrder('${esc(o.order_code)}')">${esc(o.id)}</button>`).join(' '):'<span class="muted">Nessun documento</span>'}</td><td class="right">${money(tot)}</td><td><button class="btn small danger" onclick="deleteClient('${c.id}')">Cancella anagrafica</button></td></tr>`
     }).join('')
   }
 }
 
-function deleteOrder(id){
-  if(!confirm('Cancellare questo documento?'))return;
-  let o=db.orders.find(x=>x.id===id);
-  if(!o)return;
-  if(!isAdmin() && o.sellerId!==currentUser.id){alert('Solo admin o il proprietario può cancellare questo documento.');return}
-  db.orders=db.orders.filter(x=>x.id!==id);
-  saveDb();
-  renderAll();
-  updatePreview();
-}
-
-function deleteClient(id){
+async function deleteClient(id){
   let c=db.clients.find(x=>x.id===id);
   if(!c)return;
   if(!isAdmin() && c.ownerId!==currentUser.id){alert('Solo admin o il proprietario può cancellare questa anagrafica.');return}
   if(!confirm('Cancellare questa anagrafica? I documenti già creati restano nello storico.'))return;
-  db.clients=db.clients.filter(x=>x.id!==id);
-  saveDb();
+  if(!sb){alert('Supabase non configurato.');return}
+  const {error}=await sb.from('clients').delete().eq('id',id);
+  if(error){console.error('deleteClient:',error);alert('Errore cancellazione anagrafica: '+(error.message||JSON.stringify(error)));return}
+  await loadClientsFromSupabase();
   renderAll();
 }
 
-function renderAll(){renderClients();renderHistory();renderUsers();renderDashboard();updatePreview()}
+function renderAll(){renderClients();renderHistory();renderStatus();renderPicking();renderUsers();renderDashboard();updatePreview()}
 function printOrder(){if(!formReadyForDocument(true))return;window.print()}
 
+/* ===== Documento enterprise ===== */
 function updatePreview(){
   if(!qs('document'))return;
   let o=orderData();
   let rows=o.products.map(p=>`<tr><td>${esc(p.grade||'-')}</td><td>${esc(p.name||'-')}</td><td>${esc(p.color||'-')}</td><td>${esc(p.gb||'-')}</td><td class="right">${p.qty||'-'}</td><td class="right">${p.price?money(p.price):'-'}</td><td class="right">${esc(p.ivaCode||'-')}</td><td class="right">${money(p.qty*p.price)}</td></tr>`).join('');
-  qs('document').innerHTML=`<div class="doc-head"><div class="doc-logo"><div class="doc-logo-mark">M</div><div><h1>${COMPANY.name}</h1><small>${COMPANY.address}<br>${COMPANY.vat} · ${COMPANY.site}</small></div></div><div class="doc-title"><h2>Ordine d'acquisto</h2><small>${esc(o.id)}<br>${esc(o.date)}</small></div></div><div class="doc-section"><h3>Cliente</h3><b>${esc(o.client.name||'—')}</b><br><small>${o.client.ref? 'Referente: '+esc(o.client.ref)+'<br>':''}${esc(o.client.street||'')} ${esc(o.client.streetNo||'')}, ${esc(o.client.zip||'')} ${esc(o.client.city||'')} ${esc(o.client.province||'')}<br>${o.client.vatId?'P.IVA: '+esc(o.client.vatId)+'<br>':''}${esc(o.client.phone||'')} ${esc(o.client.email||'')}</small></div><div class="doc-section"><h3>Referente commerciale</h3><b>${esc(o.sellerName)}</b></div><table class="doc-table"><thead><tr><th>Grado</th><th>Prodotto</th><th>Colore</th><th>GB</th><th>Qnt</th><th>Prezzo</th><th>IVA/Regime</th><th>Totale</th></tr></thead><tbody>${rows||'<tr><td colspan="8">Nessun prodotto inserito</td></tr>'}</tbody></table><div class="doc-section"><h3>Pagamento e spedizione</h3><small>Pagamento: <b>${esc(o.payment||'—')}</b> · Corriere: <b>${esc(o.courier||'—')}</b> · Paese: <b>${esc(o.country||'—')}</b>${o.notes?'<br>Note: '+esc(o.notes):''}</small></div><div class="totals"><div><span>Totale prodotti</span><b>${money(o.subtotal)}</b></div><div><span>Spedizione</span><b>${String(qs('shippingCost').value).trim()?money(o.shipping):'—'}</b></div><div class="grand"><span>Totale ordine</span><span>${money(o.total)}</span></div></div><div class="policy"><b>Condizioni essenziali Metauein</b><br>Documento generato per uso commerciale interno. Merce soggetta a disponibilità e conferma finale. Eventuali reclami, difformità o richieste RMA devono essere comunicati tempestivamente indicando modello, quantità, IMEI ove presente e documentazione fotografica/video. Le condizioni definitive seguono le policy Metauein aggiornate e gli accordi commerciali confermati tra le parti.</div>`
+
+  const logoBlock=`<img src="${LOGO_URL}" alt="Metauein" class="doc-logo-img" onerror="this.onerror=null;this.outerHTML='<div class=\\'doc-logo-fallback\\'>M</div>';">`;
+
+  const clientLines=`
+    ${o.client.ref?`Referente: ${esc(o.client.ref)}<br>`:''}
+    ${esc([o.client.street,o.client.streetNo].filter(Boolean).join(' '))}${(o.client.street||o.client.streetNo)?'<br>':''}
+    ${esc([o.client.zip,o.client.city,o.client.province].filter(Boolean).join(' '))}${(o.client.zip||o.client.city||o.client.province)?'<br>':''}
+    ${o.client.vatId?`P.IVA: ${esc(o.client.vatId)}<br>`:''}
+    ${esc([o.client.phone,o.client.email].filter(Boolean).join(' · '))}`;
+
+  qs('document').innerHTML=`
+    <div class="doc-head">
+      <div class="doc-brand">
+        ${logoBlock}
+        <div class="doc-company">
+          <div class="cname">${esc(COMPANY.name)}</div>
+          ${esc(COMPANY.address)}<br>
+          ${esc(COMPANY.vat)} · ${esc(COMPANY.site)}
+        </div>
+      </div>
+      <div class="doc-title">
+        <h2>Ordine d'acquisto</h2>
+        <div class="doc-meta">
+          <span class="lbl">Numero</span><br><span class="val">${esc(o.id)}</span><br>
+          <span class="lbl">Data</span><br><span class="val">${esc(o.date)}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-parties">
+      <div class="doc-box">
+        <h3>Cliente</h3>
+        <div class="pname">${esc(o.client.name||'—')}</div>
+        <div class="pline">${clientLines}</div>
+      </div>
+      <div class="doc-box">
+        <h3>Referente commerciale</h3>
+        <div class="pname">${esc(o.sellerName||'—')}</div>
+        <div class="pline">${esc(COMPANY.name)}<br>${esc(COMPANY.site)}</div>
+      </div>
+    </div>
+
+    <table class="doc-table">
+      <thead><tr><th>Grado</th><th>Prodotto</th><th>Colore</th><th>GB</th><th class="right">Qnt</th><th class="right">Prezzo</th><th class="right">IVA/Regime</th><th class="right">Totale</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="8" class="muted">Nessun prodotto inserito</td></tr>'}</tbody>
+    </table>
+
+    <div class="doc-pay">
+      <div class="doc-pay-info">
+        <span class="lbl">Pagamento e spedizione</span>
+        Pagamento: <b>${esc(o.payment||'—')}</b><br>
+        Corriere: <b>${esc(o.courier||'—')}</b><br>
+        Paese: <b>${esc(o.country||'—')}</b>
+        ${o.notes?`<br>Note: ${esc(o.notes)}`:''}
+      </div>
+      <div class="totals">
+        <div class="line"><span>Totale prodotti</span><b>${money(o.subtotal)}</b></div>
+        <div class="line"><span>Spedizione</span><b>${String(qs('shippingCost').value).trim()?money(o.shipping):'—'}</b></div>
+        <div class="line grand"><span>Totale ordine</span><span>${money(o.total)}</span></div>
+      </div>
+    </div>
+
+    <div class="policy">
+      <b>Condizioni essenziali Metauein</b><br>
+      Documento generato per uso commerciale interno. Merce soggetta a disponibilità e conferma finale. Eventuali reclami, difformità o richieste RMA devono essere comunicati tempestivamente indicando modello, quantità, IMEI ove presente e documentazione fotografica/video. Le condizioni definitive seguono le policy Metauein aggiornate e gli accordi commerciali confermati tra le parti.
+    </div>`;
 }
 
-loadDb();
 restoreSession();
+
 </script>
 </body>
 </html>
