@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Metauein Orders V4</title>
+  <title>Metauein Orders V4 - Auth</title>
   <style>
     :root{
       --bg:#f4f6f8;--card:#ffffff;--ink:#111827;--muted:#6b7280;--line:#e5e7eb;--dark:#0f172a;--gold:#c8a24a;--green:#0f766e;--red:#dc2626;
@@ -29,7 +29,7 @@
   <div id="login" class="login-wrap">
     <div class="login-card">
       <div class="brand"><div class="logo">M</div><div><h1>Metauein Orders</h1><p>Accesso area commerciale</p></div></div>
-      <div class="field"><label>Username</label><input id="loginUser" autocomplete="username" placeholder="User" /></div>
+      <div class="field"><label>Email</label><input id="loginUser" type="email" autocomplete="username" placeholder="nome@metauein.it" /></div>
       <div class="field"><label>Password</label><input id="loginPass" type="password" autocomplete="current-password" placeholder="Password" /></div>
       <button class="btn" style="width:100%" onclick="login()">Accedi</button>
       <div id="loginErr" class="err hidden">Credenziali non corrette.</div>
@@ -83,8 +83,20 @@
 
         <section id="view-history" class="view hidden"><div class="panel"><h2>Database ordini</h2><div class="field"><label>Cerca</label><input id="orderSearch" oninput="renderHistory()" placeholder="cliente, ordine, venditore..."></div><table class="table"><thead><tr><th>Ordine</th><th>Data</th><th>Cliente</th><th>Venditore</th><th class="right">Totale</th><th></th></tr></thead><tbody id="historyRows"></tbody></table></div></section>
         <section id="view-clients" class="view hidden"><div class="panel"><h2>Database clienti</h2><table class="table"><thead><tr><th>Cliente</th><th>Città</th><th>P.IVA</th><th>Telefono</th><th></th></tr></thead><tbody id="clientRows"></tbody></table></div></section>
-        <section id="view-users" class="view hidden"><div class="panel"><h2>Area utenti - crea profili venditori</h2><div class="row3"><div class="field"><label>Nome</label><input id="newName"></div><div class="field"><label>Username</label><input id="newUsername"></div><div class="field"><label>Password</label><input id="newPassword"></div></div><div class="row"><div class="field"><label>Ruolo</label><select id="newRole"><option value="seller">Venditore</option><option value="admin">Amministratore</option></select></div><div class="field"><label>&nbsp;</label><button class="btn" onclick="addUser()">Crea utente</button></div></div><table class="table"><thead><tr><th>Nome</th><th>Username</th><th>Ruolo</th><th>Azioni admin</th></tr></thead><tbody id="userRows"></tbody></table></div></section>
-        <section id="view-dashboard" class="view hidden"><div class="cards"><div class="stat"><span>Ordini</span><b id="statOrders">0</b></div><div class="stat"><span>Fatturato</span><b id="statRevenue">€0</b></div><div class="stat"><span>Clienti</span><b id="statClients">0</b></div></div><div class="panel" style="margin-top:18px"><h2>Dashboard documenti per cliente</h2><p class="hint">I venditori vedono solo le anagrafiche e i documenti creati dal proprio profilo. L'admin può controllare tutto o entrare nel profilo venditore.</p><table class="table"><thead><tr><th>Cliente</th><th>Città</th><th>Documenti collegati</th><th class="right">Totale</th><th>Azioni</th></tr></thead><tbody id="dashClientRows"></tbody></table></div></section>
+        <section id="view-users" class="view hidden">
+          <div class="panel">
+            <h2>Area utenti</h2>
+            <p class="hint">
+              Gli utenti si creano da Supabase → Authentication → Users. Qui vedi i profili collegati alla tabella profiles.
+              Solo Admin vede questa sezione. Backoffice vede documenti/anagrafiche di tutti ma non Area utenti.
+            </p>
+            <table class="table">
+              <thead><tr><th>Nome</th><th>Username</th><th>Ruolo</th><th>ID</th></tr></thead>
+              <tbody id="userRows"></tbody>
+            </table>
+          </div>
+        </section>
+        <section id="view-dashboard" class="view hidden"><div class="cards"><div class="stat"><span>Ordini</span><b id="statOrders">0</b></div><div class="stat"><span>Fatturato</span><b id="statRevenue">€0</b></div><div class="stat"><span>Clienti</span><b id="statClients">0</b></div></div><div class="panel" style="margin-top:18px"><h2>Dashboard documenti per cliente</h2><p class="hint">Venditore: vede solo le proprie anagrafiche e documenti. Admin e Backoffice: vedono tutto. Solo Admin vede Area utenti.</p><table class="table"><thead><tr><th>Cliente</th><th>Città</th><th>Documenti collegati</th><th class="right">Totale</th><th>Azioni</th></tr></thead><tbody id="dashClientRows"></tbody></table></div></section>
       </main>
     </div>
   </div>
@@ -97,10 +109,18 @@ const sb=(window.supabase&&SUPABASE_URL.indexOf('INCOLLA')===-1)?window.supabase
 </script>
 <script>
 const COMPANY={name:'Metauein Srl',address:'Via Sempione 161, Pero, 20016',vat:'P.IVA 098XXXXXXXX',site:'metauein.it'};
-let db, currentUser, impersonated=null, editingOrderId=null;
-const qs=id=>document.getElementById(id); const money=n=>'€ '+(Number(n)||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
-function defaultDb(){return {users:[{id:'u_admin',name:'Admin Metauein',username:'admin',password:'admin123',role:'admin'}],clients:[],orders:[],nextOrderNumber:1}}
-function loadDb(){db=JSON.parse(localStorage.getItem('metaueinOrdersV2')||'null')||defaultDb(); if(!db.nextOrderNumber){db.nextOrderNumber=(db.orders?.length||0)+1} saveDb()} function saveDb(){localStorage.setItem('metaueinOrdersV2',JSON.stringify(db))}
+let db, currentUser, impersonated=null, editingOrderId=null, profileUsers=[];
+const qs=id=>document.getElementById(id);
+const money=n=>'€ '+(Number(n)||0).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+function defaultDb(){return {users:[],clients:[],orders:[],nextOrderNumber:1}}
+function loadDb(){db=JSON.parse(localStorage.getItem('metaueinOrdersV2')||'null')||defaultDb(); if(!db.nextOrderNumber){db.nextOrderNumber=(db.orders?.length||0)+1} saveDb()}
+function saveDb(){localStorage.setItem('metaueinOrdersV2',JSON.stringify(db))}
+function isAdmin(){return currentUser?.role==='admin'}
+function isBackoffice(){return currentUser?.role==='backoffice'}
+function canSeeAll(){return (isAdmin() || isBackoffice()) && !impersonated}
+function roleLabel(role){return role==='admin'?'Admin':role==='backoffice'?'Backoffice':'Venditore'}
+
 async function login(){
   if(!sb){
     qs('loginErr').textContent='Supabase non configurato.';
@@ -108,55 +128,162 @@ async function login(){
     return;
   }
 
-  const username = qs('loginUser').value.trim();
+  const email = qs('loginUser').value.trim().toLowerCase();
   const password = qs('loginPass').value;
 
-  const {data:u,error}=await sb
-    .from('app_users')
+  const {data:authData,error:authError}=await sb.auth.signInWithPassword({email,password});
+
+  if(authError || !authData?.user){
+    qs('loginErr').textContent='Credenziali non corrette.';
+    qs('loginErr').classList.remove('hidden');
+    return;
+  }
+
+  const {data:profile,error:profileError}=await sb
+    .from('profiles')
     .select('*')
-    .eq('username',username)
-    .eq('password',password)
+    .eq('id',authData.user.id)
     .single();
 
-  if(error || !u){
-    qs('loginErr').textContent='Credenziali non corrette.';
+  if(profileError || !profile){
+    await sb.auth.signOut();
+    qs('loginErr').textContent='Profilo non trovato in profiles. Controlla che l’UID dell’utente Auth sia inserito nella tabella profiles.';
     qs('loginErr').classList.remove('hidden');
     return;
   }
 
   loadDb();
   currentUser={
-    id:u.id,
-    name:u.name,
-    username:u.username,
-    password:u.password,
-    role:u.role
+    id:profile.id,
+    name:profile.name,
+    username:profile.username || email,
+    email:email,
+    role:profile.role
   };
 
   impersonated=null;
   qs('login').classList.add('hidden');
   qs('app').classList.remove('hidden');
-  initApp();
+  await initApp();
 }
-function logout(){currentUser=null;impersonated=null;location.reload()} function activeUser(){return impersonated||currentUser}
-function initApp(){qs('who').innerHTML=`${currentUser.name} <span class="pill">${currentUser.role==='admin'?'Admin':'Venditore'}</span>`;document.querySelectorAll('.adminOnly').forEach(e=>e.style.display=currentUser.role==='admin'?'block':'none');renderAll();newOrder()}
+
+async function restoreSession(){
+  if(!sb)return;
+  const {data}=await sb.auth.getSession();
+  const session=data?.session;
+  if(!session?.user)return;
+
+  const {data:profile,error}=await sb
+    .from('profiles')
+    .select('*')
+    .eq('id',session.user.id)
+    .single();
+
+  if(error || !profile)return;
+
+  loadDb();
+  currentUser={
+    id:profile.id,
+    name:profile.name,
+    username:profile.username || session.user.email,
+    email:session.user.email,
+    role:profile.role
+  };
+  qs('login').classList.add('hidden');
+  qs('app').classList.remove('hidden');
+  await initApp();
+}
+
+async function logout(){
+  if(sb) await sb.auth.signOut();
+  currentUser=null;
+  impersonated=null;
+  location.reload();
+}
+
+function activeUser(){return impersonated||currentUser}
+
+async function initApp(){
+  qs('who').innerHTML=`${esc(currentUser.name)} <span class="pill">${roleLabel(currentUser.role)}</span>`;
+  document.querySelectorAll('.adminOnly').forEach(e=>e.style.display=isAdmin()?'block':'none');
+  await loadProfilesForAdmin();
+  renderAll();
+  newOrder();
+}
+
+async function loadProfilesForAdmin(){
+  profileUsers=[];
+  if(!sb || !isAdmin())return;
+  const {data,error}=await sb.from('profiles').select('id,name,username,role,created_at').order('created_at',{ascending:true});
+  if(!error && data) profileUsers=data;
+}
+
 function showView(v,btn){document.querySelectorAll('.view').forEach(e=>e.classList.add('hidden'));qs('view-'+v).classList.remove('hidden');document.querySelectorAll('.navbtn').forEach(e=>e.classList.remove('active'));btn.classList.add('active');renderAll()}
 function esc(v){return String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]))}
+
 function validateClient(show=false){let ok=true;['customerName','street','streetNo','zip','city'].forEach(id=>{let el=qs(id);let miss=!el.value.trim();el.classList.toggle('invalid',miss);if(miss)ok=false});if(show&&!ok)alert('Prima completa l’anagrafica cliente: nome/azienda, via, civico, CAP e città.');return ok}
 function validateProducts(show=false){let cards=[...document.querySelectorAll('.product-card')];let ok=cards.length>0;if(!cards.length&&show)alert('Inserisci almeno un prodotto.');cards.forEach(c=>{['.grade','.prodName','.color','.gb','.qty','.price','.iva'].forEach(sel=>{let el=c.querySelector(sel);let miss=!String(el.value).trim()||((sel==='.qty'||sel==='.price')&&Number(el.value)<=0);el.classList.toggle('invalid',miss);if(miss)ok=false})});if(show&&!ok&&cards.length)alert('Per aggiungere/salvare il prodotto devi compilare: grado, modello, colore, GB, quantità, prezzo e IVA/regime.');return ok}
 function validateShipping(show=false){let ok=true;['payment','country','courier','shippingCost'].forEach(id=>{let el=qs(id);let miss=!String(el.value).trim();el.classList.toggle('invalid',miss);if(miss)ok=false});if(show&&!ok)alert('Completa spedizione e pagamento prima di generare il documento.');return ok}
 function formReadyForDocument(show=false){return validateClient(show)&&validateProducts(show)&&validateShipping(show)}
-function addProduct(p={}){if(document.querySelectorAll('.product-card').length && !validateProducts(true))return;let id='p'+Date.now()+Math.random().toString(16).slice(2);let div=document.createElement('div');div.className='product-card';div.dataset.pid=id;let ivaVal=p.ivaCode||p.iva||'art.36';let gradeVal=p.grade||'Nuovo';div.innerHTML=`<div class="product-head"><b>Prodotto</b><button class="btn danger small" onclick="this.closest('.product-card').remove();updatePreview()">Rimuovi</button></div><div class="row3"><div class="field"><label>Grado *</label><select class="grade" onchange="updatePreview()"><option value="">Seleziona...</option><option ${gradeVal==='Nuovo'?'selected':''}>Nuovo</option><option ${gradeVal==='Usato'?'selected':''}>Usato</option><option ${gradeVal==='Premium'?'selected':''}>Premium</option><option ${gradeVal==='Nuovo attivato'?'selected':''}>Nuovo attivato</option></select></div><div class="field"><label>Modello / Prodotto *</label><input class="prodName" value="${esc(p.name||'')}" oninput="updatePreview()"></div><div class="field"><label>Colore *</label><input class="color" placeholder="Es. Nero, Naturale, Titanio blu..." value="${esc(p.color||'')}" oninput="updatePreview()"></div></div><div class="row3"><div class="field"><label>GB *</label><input class="gb" value="${esc(p.gb||'')}" oninput="updatePreview()"></div><div class="field"><label>Quantità *</label><input class="qty" type="number" value="${p.qty||''}" oninput="updatePreview()"></div><div class="field"><label>Prezzo unitario € *</label><input class="price" type="number" step="0.01" value="${p.price||''}" oninput="updatePreview()"></div></div><div class="row"><div class="field"><label>IVA / Regime *</label><select class="iva" onchange="updatePreview()"><option value="">Seleziona...</option><option value="art.36" ${ivaVal==='art.36'?'selected':''}>art.36</option><option value="art.17" ${ivaVal==='art.17'?'selected':''}>art.17</option><option value="ns.41" ${ivaVal==='ns.41'?'selected':''}>ns.41</option></select></div><div class="field"><label>&nbsp;</label><span class="hint">Tutte le caselle prodotto sono obbligatorie.</span></div></div>`;qs('products').appendChild(div);updatePreview()}
+
+function addProduct(p={}){
+  if(document.querySelectorAll('.product-card').length && !validateProducts(true))return;
+  let id='p'+Date.now()+Math.random().toString(16).slice(2);
+  let div=document.createElement('div');
+  div.className='product-card';
+  div.dataset.pid=id;
+  let ivaVal=p.ivaCode||p.iva||'art.36';
+  let gradeVal=p.grade||'Nuovo';
+  div.innerHTML=`<div class="product-head"><b>Prodotto</b><button class="btn danger small" onclick="this.closest('.product-card').remove();updatePreview()">Rimuovi</button></div><div class="row3"><div class="field"><label>Grado *</label><select class="grade" onchange="updatePreview()"><option value="">Seleziona...</option><option ${gradeVal==='Nuovo'?'selected':''}>Nuovo</option><option ${gradeVal==='Usato'?'selected':''}>Usato</option><option ${gradeVal==='Premium'?'selected':''}>Premium</option><option ${gradeVal==='Nuovo attivato'?'selected':''}>Nuovo attivato</option></select></div><div class="field"><label>Modello / Prodotto *</label><input class="prodName" value="${esc(p.name||'')}" oninput="updatePreview()"></div><div class="field"><label>Colore *</label><input class="color" placeholder="Es. Nero, Naturale, Titanio blu..." value="${esc(p.color||'')}" oninput="updatePreview()"></div></div><div class="row3"><div class="field"><label>GB *</label><input class="gb" value="${esc(p.gb||'')}" oninput="updatePreview()"></div><div class="field"><label>Quantità *</label><input class="qty" type="number" value="${p.qty||''}" oninput="updatePreview()"></div><div class="field"><label>Prezzo unitario € *</label><input class="price" type="number" step="0.01" value="${p.price||''}" oninput="updatePreview()"></div></div><div class="row"><div class="field"><label>IVA / Regime *</label><select class="iva" onchange="updatePreview()"><option value="">Seleziona...</option><option value="art.36" ${ivaVal==='art.36'?'selected':''}>art.36</option><option value="art.17" ${ivaVal==='art.17'?'selected':''}>art.17</option><option value="ns.41" ${ivaVal==='ns.41'?'selected':''}>ns.41</option></select></div><div class="field"><label>&nbsp;</label><span class="hint">Tutte le caselle prodotto sono obbligatorie.</span></div></div>`;
+  qs('products').appendChild(div);
+  updatePreview();
+}
+
 function getProducts(){return [...document.querySelectorAll('.product-card')].map(c=>({grade:c.querySelector('.grade').value,name:c.querySelector('.prodName').value,color:c.querySelector('.color').value,gb:c.querySelector('.gb').value,qty:+c.querySelector('.qty').value||0,ivaCode:c.querySelector('.iva').value,price:+c.querySelector('.price').value||0}))}
-function subtotal(){return getProducts().reduce((s,p)=>s+p.qty*p.price,0)} function ivaTotal(){return 0} function total(){return subtotal()+(+qs('shippingCost').value||0)}
+function subtotal(){return getProducts().reduce((s,p)=>s+p.qty*p.price,0)}
+function ivaTotal(){return 0}
+function total(){return subtotal()+(+qs('shippingCost').value||0)}
+
 function clientData(){return {name:qs('customerName').value,ref:qs('customerRef').value,street:qs('street').value,streetNo:qs('streetNo').value,zip:qs('zip').value,city:qs('city').value,province:qs('province').value,vatId:qs('vatId').value,phone:qs('phone').value,email:qs('email').value}}
 function setClient(c){['customerName','customerRef','street','streetNo','zip','city','province','vatId','phone','email'].forEach((id,i)=>qs(id).value=[c.name,c.ref,c.street,c.streetNo,c.zip,c.city,c.province,c.vatId,c.phone,c.email][i]||'');updatePreview()}
-function saveClient(){let c=clientData(); if(!c.name||!c.street||!c.streetNo||!c.zip||!c.city){alert('Compila almeno nome, via, civico, CAP e città.');return} let ex=db.clients.find(x=>x.name.toLowerCase()===c.name.toLowerCase()&&x.ownerId===activeUser().id); if(ex) Object.assign(ex,c); else db.clients.push({...c,id:'c_'+Date.now(),ownerId:activeUser().id}); saveDb();renderClients();renderDashboard();alert('Anagrafica salvata')}
-function renderClients(){let sel=qs('clientSelect');sel.innerHTML='<option value="">Seleziona cliente salvato...</option>';let list=currentUser.role==='admin'?db.clients:db.clients.filter(c=>c.ownerId===currentUser.id);list.forEach(c=>sel.innerHTML+=`<option value="${c.id}">${c.name} — ${c.city||''}</option>`);qs('clientRows').innerHTML=list.map(c=>`<tr><td>${c.name}</td><td>${c.city||''}</td><td>${c.vatId||'-'}</td><td>${c.phone||'-'}</td><td><button class="btn small secondary" onclick="setClient(db.clients.find(x=>x.id==='${c.id}'));showView('orders',document.querySelector('.navbtn'))">Usa</button> <button class="btn small danger" onclick="deleteClient('${c.id}')">Cancella</button></td></tr>`).join('')}
+
+function saveClient(){
+  let c=clientData();
+  if(!c.name||!c.street||!c.streetNo||!c.zip||!c.city){alert('Compila almeno nome, via, civico, CAP e città.');return}
+  let ex=db.clients.find(x=>x.name.toLowerCase()===c.name.toLowerCase()&&x.ownerId===activeUser().id);
+  if(ex) Object.assign(ex,c);
+  else db.clients.push({...c,id:'c_'+Date.now(),ownerId:activeUser().id,ownerName:activeUser().name});
+  saveDb();
+  renderClients();
+  renderDashboard();
+  alert('Anagrafica salvata');
+}
+
+function renderClients(){
+  let sel=qs('clientSelect');
+  sel.innerHTML='<option value="">Seleziona cliente salvato...</option>';
+  let list=canSeeAll()?db.clients:db.clients.filter(c=>c.ownerId===currentUser.id);
+  list.forEach(c=>sel.innerHTML+=`<option value="${c.id}">${esc(c.name)} — ${esc(c.city||'')}</option>`);
+  qs('clientRows').innerHTML=list.map(c=>`<tr><td>${esc(c.name)}</td><td>${esc(c.city||'')}</td><td>${esc(c.vatId||'-')}</td><td>${esc(c.phone||'-')}</td><td><button class="btn small secondary" onclick="setClient(db.clients.find(x=>x.id==='${c.id}'));showView('orders',document.querySelector('.navbtn'))">Usa</button> <button class="btn small danger" onclick="deleteClient('${c.id}')">Cancella</button></td></tr>`).join('')
+}
+
 function loadClientFromSelect(){let c=db.clients.find(x=>x.id===qs('clientSelect').value); if(c)setClient(c)}
 function nextOrderId(){return 'ORD-'+new Date().getFullYear()+'-'+String(db.nextOrderNumber||1).padStart(5,'0')}
 function orderData(){return {id:editingOrderId||nextOrderId(),date:new Date().toLocaleDateString('it-IT'),sellerId:activeUser().id,sellerName:activeUser().name,client:clientData(),products:getProducts(),payment:qs('payment').value,country:qs('country').value,courier:qs('courier').value,shipping:+qs('shippingCost').value||0,notes:qs('notes').value,subtotal:subtotal(),iva:ivaTotal(),total:total()}}
-function saveOrder(){if(!formReadyForDocument(true))return;let isNew=!editingOrderId;let o=orderData();let i=db.orders.findIndex(x=>x.id===o.id); if(i>=0)db.orders[i]=o;else db.orders.unshift(o); if(isNew)db.nextOrderNumber=(db.nextOrderNumber||1)+1; saveDb();editingOrderId=o.id;renderAll();saveOrderToSupabase(o)}
+
+function saveOrder(){
+  if(!formReadyForDocument(true))return;
+  let isNew=!editingOrderId;
+  let o=orderData();
+  let i=db.orders.findIndex(x=>x.id===o.id);
+  if(i>=0)db.orders[i]=o;else db.orders.unshift(o);
+  if(isNew)db.nextOrderNumber=(db.nextOrderNumber||1)+1;
+  saveDb();
+  editingOrderId=o.id;
+  renderAll();
+  saveOrderToSupabase(o);
+}
+
 async function saveOrderToSupabase(o){
   if(!sb){alert('Ordine salvato (solo locale: Supabase non configurato).');return}
   try{
@@ -166,7 +293,7 @@ async function saveOrderToSupabase(o){
       [c.zip,c.city].filter(Boolean).join(' '),
       c.province
     ].filter(Boolean).join(', ');
-    // 1. inserisci l'ordine principale
+
     const {data:ordine,error:errOrdine}=await sb
       .from('orders')
       .insert({
@@ -175,14 +302,16 @@ async function saveOrderToSupabase(o){
         payment_method:o.payment||'',
         courier:o.courier||'',
         notes:o.notes||'',
-        total_amount:o.total
+        total_amount:o.total,
+        created_by:o.sellerId,
+        sales_rep:o.sellerName
       })
       .select()
       .single();
+
     if(errOrdine)throw errOrdine;
-    // 2. recupera l'id dell'ordine creato
+
     const orderId=ordine.id;
-    // 3. inserisci i prodotti collegati
     const items=(o.products||[]).map(p=>({
       order_id:orderId,
       product:p.name||'',
@@ -191,32 +320,108 @@ async function saveOrderToSupabase(o){
       vat:p.ivaCode||'',
       sale_price:p.price||0
     }));
+
     if(items.length){
       const {error:errItems}=await sb.from('order_items').insert(items);
       if(errItems)throw errItems;
     }
-    // 4. messaggio di successo
+
     alert('Ordine salvato correttamente');
   }catch(err){
-    // 5. gestione errori
     console.error('Errore Supabase:',err);
     alert('Errore nel salvataggio su database: '+(err.message||err.error_description||JSON.stringify(err)));
   }
 }
-function loadOrder(id){let o=db.orders.find(x=>x.id===id);editingOrderId=o.id;setClient(o.client);qs('payment').value=o.payment;qs('country').value=o.country;qs('courier').value=o.courier;qs('shippingCost').value=o.shipping;qs('notes').value=o.notes||'';qs('products').innerHTML='';o.products.forEach(addProduct);document.querySelectorAll('.view').forEach(e=>e.classList.add('hidden'));qs('view-orders').classList.remove('hidden');updatePreview()}
-function newOrder(){editingOrderId=null;['customerName','customerRef','street','streetNo','zip','city','province','vatId','phone','email','notes','payment','country','courier','shippingCost'].forEach(id=>qs(id).value='');qs('products').innerHTML='';addProduct();updatePreview()}
-function visibleOrders(){return currentUser.role==='admin'&&!impersonated?db.orders:db.orders.filter(o=>o.sellerId===activeUser().id)}
-function renderHistory(){let q=(qs('orderSearch')?.value||'').toLowerCase();let rows=visibleOrders().filter(o=>(o.id+o.client.name+o.sellerName).toLowerCase().includes(q));qs('historyRows').innerHTML=rows.map(o=>`<tr><td>${o.id}</td><td>${o.date}</td><td>${o.client.name}</td><td>${o.sellerName}</td><td class="right">${money(o.total)}</td><td><button class="btn small secondary" onclick="loadOrder('${o.id}')">Apri</button> <button class="btn small danger" onclick="deleteOrder('${o.id}')">Cancella</button></td></tr>`).join('')}
-function renderUsers(){if(currentUser.role!=='admin')return;qs('userRows').innerHTML=db.users.map(u=>`<tr><td>${u.name}</td><td>${u.username}</td><td>${u.role==='admin'?'Amministratore':'Venditore'}</td><td>${u.role==='seller'?`<button class="btn small secondary" onclick="impersonate('${u.id}')">Entra profilo</button>`:''}</td></tr>`).join('')}
-function addUser(){let u={id:'u_'+Date.now(),name:qs('newName').value.trim(),username:qs('newUsername').value.trim(),password:qs('newPassword').value,role:qs('newRole').value};if(!u.name||!u.username||!u.password){alert('Completa i dati utente');return}if(db.users.some(x=>x.username.toLowerCase()===u.username.toLowerCase())){alert('Username già esistente');return}db.users.push(u);saveDb();['newName','newUsername','newPassword'].forEach(id=>qs(id).value='');renderUsers();alert('Profilo venditore creato')}
-function impersonate(id){impersonated=db.users.find(u=>u.id===id);qs('who').innerHTML=`${currentUser.name} → profilo ${impersonated.name} <span class="pill">Admin</span>`;newOrder()}
-function renderDashboard(){let orders=visibleOrders();let clients=currentUser.role==='admin'&&!impersonated?db.clients:db.clients.filter(c=>c.ownerId===activeUser().id);qs('statOrders').textContent=orders.length;qs('statRevenue').textContent=money(orders.reduce((s,o)=>s+o.total,0));qs('statClients').textContent=clients.length;let body=qs('dashClientRows');if(body){body.innerHTML=clients.map(c=>{let docs=orders.filter(o=>(o.client?.name||'').toLowerCase()===c.name.toLowerCase()&&(!impersonated||o.sellerId===activeUser().id));let tot=docs.reduce((s,o)=>s+o.total,0);return `<tr><td><b>${c.name}</b></td><td>${c.city||'-'}</td><td>${docs.length?docs.map(o=>`<button class="btn small secondary" onclick="loadOrder('${o.id}')">${o.id}</button>`).join(' '):'<span class="muted">Nessun documento</span>'}</td><td class="right">${money(tot)}</td><td><button class="btn small danger" onclick="deleteClient('${c.id}')">Cancella anagrafica</button></td></tr>`}).join('')}}
-function deleteOrder(id){if(!confirm('Cancellare questo documento?'))return;let o=db.orders.find(x=>x.id===id);if(!o)return;if(currentUser.role!=='admin'&&o.sellerId!==currentUser.id){alert('Non puoi cancellare documenti di altri profili');return}db.orders=db.orders.filter(x=>x.id!==id);saveDb();renderAll();updatePreview()}
-function deleteClient(id){let c=db.clients.find(x=>x.id===id);if(!c)return;if(currentUser.role!=='admin'&&c.ownerId!==currentUser.id){alert('Non puoi cancellare anagrafiche di altri profili');return}if(!confirm('Cancellare questa anagrafica? I documenti già creati restano nello storico.'))return;db.clients=db.clients.filter(x=>x.id!==id);saveDb();renderAll()}
+
+function loadOrder(id){
+  let o=db.orders.find(x=>x.id===id);
+  editingOrderId=o.id;
+  setClient(o.client);
+  qs('payment').value=o.payment;
+  qs('country').value=o.country;
+  qs('courier').value=o.courier;
+  qs('shippingCost').value=o.shipping;
+  qs('notes').value=o.notes||'';
+  qs('products').innerHTML='';
+  o.products.forEach(addProduct);
+  document.querySelectorAll('.view').forEach(e=>e.classList.add('hidden'));
+  qs('view-orders').classList.remove('hidden');
+  updatePreview();
+}
+
+function newOrder(){
+  editingOrderId=null;
+  ['customerName','customerRef','street','streetNo','zip','city','province','vatId','phone','email','notes','payment','country','courier','shippingCost'].forEach(id=>qs(id).value='');
+  qs('products').innerHTML='';
+  addProduct();
+  updatePreview();
+}
+
+function visibleOrders(){return canSeeAll()?db.orders:db.orders.filter(o=>o.sellerId===activeUser().id)}
+
+function renderHistory(){
+  let q=(qs('orderSearch')?.value||'').toLowerCase();
+  let rows=visibleOrders().filter(o=>(o.id+o.client.name+o.sellerName).toLowerCase().includes(q));
+  qs('historyRows').innerHTML=rows.map(o=>`<tr><td>${esc(o.id)}</td><td>${esc(o.date)}</td><td>${esc(o.client.name)}</td><td>${esc(o.sellerName)}</td><td class="right">${money(o.total)}</td><td><button class="btn small secondary" onclick="loadOrder('${o.id}')">Apri</button> <button class="btn small danger" onclick="deleteOrder('${o.id}')">Cancella</button></td></tr>`).join('')
+}
+
+function renderUsers(){
+  if(!isAdmin())return;
+  qs('userRows').innerHTML=profileUsers.map(u=>`<tr><td>${esc(u.name)}</td><td>${esc(u.username||'-')}</td><td>${esc(roleLabel(u.role))}</td><td><span class="muted">${esc(String(u.id).slice(0,8))}...</span></td></tr>`).join('') || `<tr><td colspan="4"><span class="muted">Nessun profilo leggibile. Controlla le policy RLS di profiles.</span></td></tr>`;
+}
+
+function addUser(){alert('Per sicurezza i nuovi utenti si creano da Supabase → Authentication → Users, poi si aggiungono in profiles. Non dal browser pubblico.')}
+function impersonate(id){alert('Impersonificazione disattivata con Supabase Auth. Per testare un utente fai logout e login con la sua email.')}
+
+function renderDashboard(){
+  let orders=visibleOrders();
+  let clients=canSeeAll()?db.clients:db.clients.filter(c=>c.ownerId===activeUser().id);
+  qs('statOrders').textContent=orders.length;
+  qs('statRevenue').textContent=money(orders.reduce((s,o)=>s+o.total,0));
+  qs('statClients').textContent=clients.length;
+  let body=qs('dashClientRows');
+  if(body){
+    body.innerHTML=clients.map(c=>{
+      let docs=orders.filter(o=>(o.client?.name||'').toLowerCase()===c.name.toLowerCase());
+      let tot=docs.reduce((s,o)=>s+o.total,0);
+      return `<tr><td><b>${esc(c.name)}</b></td><td>${esc(c.city||'-')}</td><td>${docs.length?docs.map(o=>`<button class="btn small secondary" onclick="loadOrder('${o.id}')">${esc(o.id)}</button>`).join(' '):'<span class="muted">Nessun documento</span>'}</td><td class="right">${money(tot)}</td><td><button class="btn small danger" onclick="deleteClient('${c.id}')">Cancella anagrafica</button></td></tr>`
+    }).join('')
+  }
+}
+
+function deleteOrder(id){
+  if(!confirm('Cancellare questo documento?'))return;
+  let o=db.orders.find(x=>x.id===id);
+  if(!o)return;
+  if(!isAdmin() && o.sellerId!==currentUser.id){alert('Solo admin o il proprietario può cancellare questo documento.');return}
+  db.orders=db.orders.filter(x=>x.id!==id);
+  saveDb();
+  renderAll();
+  updatePreview();
+}
+
+function deleteClient(id){
+  let c=db.clients.find(x=>x.id===id);
+  if(!c)return;
+  if(!isAdmin() && c.ownerId!==currentUser.id){alert('Solo admin o il proprietario può cancellare questa anagrafica.');return}
+  if(!confirm('Cancellare questa anagrafica? I documenti già creati restano nello storico.'))return;
+  db.clients=db.clients.filter(x=>x.id!==id);
+  saveDb();
+  renderAll();
+}
+
 function renderAll(){renderClients();renderHistory();renderUsers();renderDashboard();updatePreview()}
 function printOrder(){if(!formReadyForDocument(true))return;window.print()}
-function updatePreview(){if(!qs('document'))return;let o=orderData();let rows=o.products.map(p=>`<tr><td>${p.grade||'-'}</td><td>${p.name||'-'}</td><td>${p.color||'-'}</td><td>${p.gb||'-'}</td><td class="right">${p.qty||'-'}</td><td class="right">${p.price?money(p.price):'-'}</td><td class="right">${p.ivaCode||'-'}</td><td class="right">${money(p.qty*p.price)}</td></tr>`).join('');qs('document').innerHTML=`<div class="doc-head"><div class="doc-logo"><div class="doc-logo-mark">M</div><div><h1>${COMPANY.name}</h1><small>${COMPANY.address}<br>${COMPANY.vat} · ${COMPANY.site}</small></div></div><div class="doc-title"><h2>Ordine d'acquisto</h2><small>${o.id}<br>${o.date}</small></div></div><div class="doc-section"><h3>Cliente</h3><b>${o.client.name||'—'}</b><br><small>${o.client.ref? 'Referente: '+o.client.ref+'<br>':''}${o.client.street||''} ${o.client.streetNo||''}, ${o.client.zip||''} ${o.client.city||''} ${o.client.province||''}<br>${o.client.vatId?'P.IVA: '+o.client.vatId+'<br>':''}${o.client.phone||''} ${o.client.email||''}</small></div><div class="doc-section"><h3>Referente commerciale</h3><b>${o.sellerName}</b></div><table class="doc-table"><thead><tr><th>Grado</th><th>Prodotto</th><th>Colore</th><th>GB</th><th>Qnt</th><th>Prezzo</th><th>IVA/Regime</th><th>Totale</th></tr></thead><tbody>${rows||'<tr><td colspan="8">Nessun prodotto inserito</td></tr>'}</tbody></table><div class="doc-section"><h3>Pagamento e spedizione</h3><small>Pagamento: <b>${o.payment||'—'}</b> · Corriere: <b>${o.courier||'—'}</b> · Paese: <b>${o.country||'—'}</b>${o.notes?'<br>Note: '+o.notes:''}</small></div><div class="totals"><div><span>Totale prodotti</span><b>${money(o.subtotal)}</b></div><div><span>Spedizione</span><b>${String(qs('shippingCost').value).trim()?money(o.shipping):'—'}</b></div><div class="grand"><span>Totale ordine</span><span>${money(o.total)}</span></div></div><div class="policy"><b>Condizioni essenziali Metauein</b><br>Documento generato per uso commerciale interno. Merce soggetta a disponibilità e conferma finale. Eventuali reclami, difformità o richieste RMA devono essere comunicati tempestivamente indicando modello, quantità, IMEI ove presente e documentazione fotografica/video. Le condizioni definitive seguono le policy Metauein aggiornate e gli accordi commerciali confermati tra le parti.</div>`}
+
+function updatePreview(){
+  if(!qs('document'))return;
+  let o=orderData();
+  let rows=o.products.map(p=>`<tr><td>${esc(p.grade||'-')}</td><td>${esc(p.name||'-')}</td><td>${esc(p.color||'-')}</td><td>${esc(p.gb||'-')}</td><td class="right">${p.qty||'-'}</td><td class="right">${p.price?money(p.price):'-'}</td><td class="right">${esc(p.ivaCode||'-')}</td><td class="right">${money(p.qty*p.price)}</td></tr>`).join('');
+  qs('document').innerHTML=`<div class="doc-head"><div class="doc-logo"><div class="doc-logo-mark">M</div><div><h1>${COMPANY.name}</h1><small>${COMPANY.address}<br>${COMPANY.vat} · ${COMPANY.site}</small></div></div><div class="doc-title"><h2>Ordine d'acquisto</h2><small>${esc(o.id)}<br>${esc(o.date)}</small></div></div><div class="doc-section"><h3>Cliente</h3><b>${esc(o.client.name||'—')}</b><br><small>${o.client.ref? 'Referente: '+esc(o.client.ref)+'<br>':''}${esc(o.client.street||'')} ${esc(o.client.streetNo||'')}, ${esc(o.client.zip||'')} ${esc(o.client.city||'')} ${esc(o.client.province||'')}<br>${o.client.vatId?'P.IVA: '+esc(o.client.vatId)+'<br>':''}${esc(o.client.phone||'')} ${esc(o.client.email||'')}</small></div><div class="doc-section"><h3>Referente commerciale</h3><b>${esc(o.sellerName)}</b></div><table class="doc-table"><thead><tr><th>Grado</th><th>Prodotto</th><th>Colore</th><th>GB</th><th>Qnt</th><th>Prezzo</th><th>IVA/Regime</th><th>Totale</th></tr></thead><tbody>${rows||'<tr><td colspan="8">Nessun prodotto inserito</td></tr>'}</tbody></table><div class="doc-section"><h3>Pagamento e spedizione</h3><small>Pagamento: <b>${esc(o.payment||'—')}</b> · Corriere: <b>${esc(o.courier||'—')}</b> · Paese: <b>${esc(o.country||'—')}</b>${o.notes?'<br>Note: '+esc(o.notes):''}</small></div><div class="totals"><div><span>Totale prodotti</span><b>${money(o.subtotal)}</b></div><div><span>Spedizione</span><b>${String(qs('shippingCost').value).trim()?money(o.shipping):'—'}</b></div><div class="grand"><span>Totale ordine</span><span>${money(o.total)}</span></div></div><div class="policy"><b>Condizioni essenziali Metauein</b><br>Documento generato per uso commerciale interno. Merce soggetta a disponibilità e conferma finale. Eventuali reclami, difformità o richieste RMA devono essere comunicati tempestivamente indicando modello, quantità, IMEI ove presente e documentazione fotografica/video. Le condizioni definitive seguono le policy Metauein aggiornate e gli accordi commerciali confermati tra le parti.</div>`
+}
+
 loadDb();
+restoreSession();
 </script>
 </body>
 </html>
