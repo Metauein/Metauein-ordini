@@ -66,7 +66,7 @@
     .doc{background:#fff;border:1px solid #d9dee8;box-shadow:0 18px 50px rgba(15,23,42,.12);padding:46px 44px;color:#1f2937;min-height:820px;font-size:13px;line-height:1.55}
     .doc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;padding-bottom:22px;margin-bottom:26px;border-bottom:2px solid #111827}
     .doc-brand{display:flex;flex-direction:column;gap:12px;max-width:60%}
-    .doc-logo-img{height:46px;width:auto;max-width:220px;object-fit:contain;display:block}
+    .doc-logo-img{height:70px;width:auto;max-width:300px;object-fit:contain;display:block;margin-left:-8px}
     .doc-logo-fallback{width:52px;height:52px;border-radius:10px;background:#111827;color:#fff;display:grid;place-items:center;font-weight:900;border:2px solid var(--gold);font-size:24px}
     .doc-company{font-size:11.5px;color:#475569;line-height:1.7}
     .doc-company .cname{font-size:15px;font-weight:800;color:#111827;letter-spacing:-.01em;margin-bottom:2px}
@@ -856,22 +856,30 @@ function pickCardImei(o){
 
 /* Card "Spedizioni": documenti caricati dal backoffice -> stampa/impacchetta -> Completato */
 function pickCardShipping(o){
-  const docs=[];
-  if(o.sale_doc_url)docs.push(`<a href="${esc(o.sale_doc_url)}" target="_blank" rel="noopener">Documento vendita</a>`);
-  if(o.label_url)docs.push(`<a href="${esc(o.label_url)}" target="_blank" rel="noopener">Label</a>`);
-  const docLine=docs.length?docs.join(' · '):'<span class="muted">Nessun documento allegato</span>';
+  const saleBtn = o.sale_doc_url
+    ? `<button class="btn small secondary" onclick="openPrintFile('${esc(o.sale_doc_url)}')">Apri / Stampa documento vendita</button>`
+    : `<span class="muted">Documento vendita non disponibile</span>`;
+  const labelBtn = o.label_url
+    ? `<button class="btn small secondary" onclick="openPrintFile('${esc(o.label_url)}')">Apri / Stampa label</button>`
+    : `<span class="muted">Label non presente${o.delivery_mode==='Ritiro a mano'?' (ritiro a mano)':''}</span>`;
   return `<div class="pick-card" data-code="${esc(o.order_code)}">
     ${pickHeader(o)}
     ${pickProducts(o)}
     <div class="pick-prod" style="background:#fff">
-      <b style="font-size:12px">Documenti</b><br>
-      ${docLine}
+      <b style="font-size:12px">Documenti spedizione</b>
       ${o.delivery_mode?`<br><span class="muted">Modalità consegna: ${esc(o.delivery_mode)}</span>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">${saleBtn} ${labelBtn}</div>
     </div>
     <div class="pick-actions">
       <button class="btn small green" onclick="pickShippingDone('${esc(o.order_code)}')">Completato</button>
     </div>
   </div>`;
+}
+
+/* Apre il file in una nuova scheda; la stampa la lancia l'utente da lì (PDF/immagine) */
+function openPrintFile(url){
+  if(!url)return;
+  window.open(url,'_blank','noopener');
 }
 
 function getRemoteByCode(code){return remoteOrders.find(o=>o.order_code===code || o.id===code)}
@@ -958,17 +966,54 @@ async function saveDaneaNumber(code){
   const num=dn?dn.value.trim():'';
   if(await updateOrderFields(code,{danea_doc_number:num})){alert('Numero documento Danea salvato.');afterStatusChange();}
 }
+/* Carica un file su Supabase Storage (bucket order-files) e restituisce l'URL pubblico */
+async function uploadOrderFile(orderCode, kind, file){
+  const safeExt=(file.name.split('.').pop()||'bin').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const path=`${orderCode}/${kind}_${Date.now()}.${safeExt}`;
+  const {error:upErr}=await sb.storage.from('order-files').upload(path,file,{
+    upsert:true,
+    contentType:file.type||undefined
+  });
+  if(upErr)throw upErr;
+  const {data:pub}=sb.storage.from('order-files').getPublicUrl(path);
+  return pub.publicUrl;
+}
+
 async function backofficeSendShipping(code){
-  const sd=qs('sd_'+code), lb=qs('lb_'+code), dm=qs('dm_'+code);
-  const fields={
-    status:'shipping',
-    sale_doc_url:sd?sd.value.trim():'',
-    label_url:lb?lb.value.trim():'',
-    delivery_mode:dm?dm.value:''
-  };
-  if(!fields.sale_doc_url){alert('Inserisci il link/riferimento del documento di vendita.');return}
-  if(!fields.delivery_mode){alert('Seleziona la modalità di consegna (delivery_mode).');return}
-  if(await updateOrderFields(code,fields))afterStatusChange();
+  if(!(isBackoffice()||isAdmin())){alert('Solo backoffice o admin può preparare i documenti di spedizione.');return}
+  const o=getRemoteByCode(code);
+  if(!o){alert('Ordine non trovato.');return}
+
+  const sdEl=qs('sd_'+code), lbEl=qs('lb_'+code), dmEl=qs('dm_'+code);
+  const deliveryMode=dmEl?dmEl.value:'';
+  if(!deliveryMode){alert('Seleziona la modalità di consegna.');return}
+
+  const saleFile=sdEl&&sdEl.files&&sdEl.files[0]?sdEl.files[0]:null;
+  const labelFile=lbEl&&lbEl.files&&lbEl.files[0]?lbEl.files[0]:null;
+  const isPickup = deliveryMode==='Ritiro a mano';
+
+  // Documento vendita obbligatorio: o nuovo file o già presente
+  if(!saleFile && !o.sale_doc_url){alert('Il documento di vendita è obbligatorio: seleziona un file.');return}
+  // Label obbligatoria salvo "Ritiro a mano"
+  if(!isPickup && !labelFile && !o.label_url){alert('La label è obbligatoria per questa modalità di consegna: seleziona un file.');return}
+
+  const btn=qs('ship_btn_'+code);
+  if(btn){btn.disabled=true;btn.textContent='Caricamento...';}
+
+  try{
+    // Parti dai valori esistenti: se non si seleziona un nuovo file si mantiene il precedente
+    const fields={status:'shipping',delivery_mode:deliveryMode,sale_doc_url:o.sale_doc_url||'',label_url:o.label_url||''};
+
+    if(saleFile){ fields.sale_doc_url=await uploadOrderFile(code,'sale',saleFile); }
+    if(labelFile){ fields.label_url=await uploadOrderFile(code,'label',labelFile); }
+
+    if(await updateOrderFields(code,fields))afterStatusChange();
+  }catch(err){
+    console.error('Upload/spedizione:',err);
+    alert('Errore durante il caricamento dei file: '+(err.message||JSON.stringify(err)));
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Invia a picking spedizione';}
+  }
 }
 
 /* ===== BACKOFFICE: Da inserire su Danea + Documenti spedizione ===== */
@@ -996,25 +1041,33 @@ function renderBackoffice(){
       </div>
     </div>`).join('') : '<div class="muted" style="padding:6px 2px 14px">Nessun ordine da inserire su Danea.</div>';
 
-  qs('boShip').innerHTML = ship.length ? ship.map(o=>`
+  qs('boShip').innerHTML = ship.length ? ship.map(o=>{
+    const hasSale=!!o.sale_doc_url, hasLabel=!!o.label_url;
+    return `
     <div class="pick-card" data-code="${esc(o.order_code)}">
       ${pickHeader(o)}
       ${pickProducts(o)}
       <div class="pick-controls">
-        <label style="font-weight:700">Documento vendita (link)</label>
-        <input id="sd_${esc(o.order_code)}" placeholder="https://... oppure riferimento" value="${esc(o.sale_doc_url||'')}">
-        <label style="font-weight:700">Label (link)</label>
-        <input id="lb_${esc(o.order_code)}" placeholder="https://... oppure riferimento" value="${esc(o.label_url||'')}">
         <label style="font-weight:700">Modalità consegna</label>
         <select id="dm_${esc(o.order_code)}">
           <option value="">Seleziona...</option>
           ${['Corriere standard','Corriere espresso','Ritiro a mano','Spedizione assicurata'].map(d=>`<option ${o.delivery_mode===d?'selected':''}>${d}</option>`).join('')}
         </select>
+        <label style="font-weight:700">Documento vendita ${hasSale?'<span class="tag green">caricato</span>':'<span class="tag red">mancante</span>'}</label>
+        <input id="sd_${esc(o.order_code)}" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp">
+        <label style="font-weight:700">Label spedizione ${hasLabel?'<span class="tag green">caricata</span>':'<span class="muted">opzionale se ritiro a mano</span>'}</label>
+        <input id="lb_${esc(o.order_code)}" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp">
+      </div>
+      <div class="muted" style="font-size:11.5px;margin-top:6px">
+        Se non selezioni un nuovo file, viene mantenuto quello già caricato.
+        ${hasSale?`<br>Documento vendita attuale: <a href="${esc(o.sale_doc_url)}" target="_blank" rel="noopener">apri</a>`:''}
+        ${hasLabel?`<br>Label attuale: <a href="${esc(o.label_url)}" target="_blank" rel="noopener">apri</a>`:''}
       </div>
       <div class="pick-actions">
-        <button class="btn small green" onclick="backofficeSendShipping('${esc(o.order_code)}')">Invia a picking spedizione</button>
+        <button class="btn small green" id="ship_btn_${esc(o.order_code)}" onclick="backofficeSendShipping('${esc(o.order_code)}')">Invia a picking spedizione</button>
       </div>
-    </div>`).join('') : '<div class="muted" style="padding:6px 2px 14px">Nessun documento di spedizione da preparare.</div>';
+    </div>`;
+  }).join('') : '<div class="muted" style="padding:6px 2px 14px">Nessun documento di spedizione da preparare.</div>';
 }
 
 /* ===== CHAT ORDINE ===== */
