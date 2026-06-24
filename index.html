@@ -32,6 +32,8 @@
     .tag.green{background:#dcfce7;color:#166534}.tag.yellow{background:#fef3c7;color:#92400e}.tag.red{background:#fee2e2;color:#991b1b}.tag.blue{background:#dbeafe;color:#1e40af}
 
     /* ===== Picking cards ===== */
+    .pick-section{margin-bottom:22px}
+    .pick-section-title{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:#0f172a;margin:6px 0 12px;display:flex;align-items:center;gap:8px}
     .pick-card{border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:14px;background:#fff;box-shadow:var(--shadow)}
     .pick-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
     .pick-meta{font-size:13px;color:#475569;line-height:1.6}
@@ -126,6 +128,7 @@
         <button class="navbtn" data-nav="clients" onclick="showView('clients',this)">Database clienti</button>
         <button class="navbtn" data-nav="status" onclick="showView('status',this)">Stati ordini</button>
         <button class="navbtn" data-nav="picking" onclick="showView('picking',this)">Picking</button>
+        <button class="navbtn" data-nav="backoffice" onclick="showView('backoffice',this)">Backoffice</button>
         <button class="navbtn adminOnly" data-nav="users" onclick="showView('users',this)">Area utenti</button>
         <button class="navbtn" data-nav="dashboard" onclick="showView('dashboard',this)">Dashboard</button>
       </aside>
@@ -167,10 +170,10 @@
         <section id="view-status" class="view hidden">
           <div class="panel">
             <h2>Stati ordini</h2>
-            <p class="hint">Verde = confermato senza problemi · Giallo = in lavorazione · Rosso = problema segnalato · Blu = pronto. Il venditore vede solo i propri ordini; admin e backoffice vedono tutti.</p>
+            <p class="hint">Verde = confermato/completato · Giallo = in lavorazione (picking, test, Danea, IMEI) · Rosso = problema segnalato · Blu = pronto/spedizione. Il venditore vede solo i propri ordini; admin e backoffice vedono tutti. La colonna “Fase attuale” spiega dove si trova l’ordine e perché è eventualmente fermo.</p>
             <div class="field" style="max-width:320px"><label>Cerca</label><input id="statusSearch" oninput="renderStatus()" placeholder="codice, cliente, venditore..."></div>
             <table class="table">
-              <thead><tr><th>Stato</th><th>Codice</th><th>Cliente</th><th>Venditore</th><th>Stato</th><th>Test</th><th>Problema</th><th></th></tr></thead>
+              <thead><tr><th></th><th>Codice</th><th>Cliente</th><th>Venditore</th><th>Stato</th><th>Fase attuale</th><th>Test</th><th>Problema</th><th>Azioni</th></tr></thead>
               <tbody id="statusRows"></tbody>
             </table>
           </div>
@@ -179,9 +182,22 @@
         <section id="view-picking" class="view hidden">
           <div class="panel">
             <h2>Picking</h2>
-            <p class="hint">Ordini da preparare (confermati, in corso, pronti). Usa “Inizia” per metterli in lavorazione e “Segna pronto” quando l’ordine è completo. Segnala problemi o indisponibilità dalla chat.</p>
+            <p class="hint">Flusso: <b>Da preparare</b> (conferma quantità → test o backoffice) · <b>In test</b> (test completato → backoffice) · <b>Da sparare IMEI</b> (IMEI completati → pronto) · <b>Spedizioni</b> (stampa/impacchetta → completato). Segnala problemi o indisponibilità dalla chat.</p>
             <div class="field" style="max-width:320px"><label>Cerca</label><input id="pickingSearch" oninput="renderPicking()" placeholder="codice, cliente, venditore..."></div>
             <div id="pickingList"></div>
+          </div>
+        </section>
+
+        <section id="view-backoffice" class="view hidden">
+          <div class="panel">
+            <h2>Backoffice</h2>
+            <p class="hint">Due code di lavoro: <b>Da inserire su Danea</b> (ordini in attesa di registrazione) e <b>Documenti spedizione</b> (carica documento di vendita, label e modalità di consegna, poi invia a picking spedizione).</p>
+            <div class="field" style="max-width:320px"><label>Cerca</label><input id="boSearch" oninput="renderBackoffice()" placeholder="codice, cliente, venditore..."></div>
+            <h3 class="pick-section-title">Da inserire su Danea</h3>
+            <div id="boDanea"></div>
+            <div class="divider"></div>
+            <h3 class="pick-section-title">Documenti spedizione</h3>
+            <div id="boShip"></div>
           </div>
         </section>
 
@@ -343,13 +359,14 @@ async function initApp(){
 function applyNavVisibility(){
   const role=currentUser.role;
   const vis={
-    orders:   role!=='picker',
-    history:  role!=='picker',
-    clients:  role!=='picker',
-    status:   role!=='picker',          // admin, venditore, backoffice
-    picking:  role==='picker'||role==='admin',
-    users:    role==='admin',
-    dashboard:role!=='picker'
+    orders:    role!=='picker',
+    history:   role!=='picker',
+    clients:   role!=='picker',
+    status:    role!=='picker',          // admin, venditore, backoffice
+    picking:   role==='picker'||role==='admin',
+    backoffice:role==='backoffice'||role==='admin',
+    users:     role==='admin',
+    dashboard: role!=='picker'
   };
   document.querySelectorAll('.navbtn').forEach(btn=>{
     const k=btn.dataset.nav;
@@ -369,7 +386,7 @@ async function loadOrdersFromSupabase(){
   remoteOrders=[];
   if(!sb)return;
   let query=sb.from('orders')
-    .select('id,order_code,customer_name,client_data,products_data,payment_method,courier,country,notes,shipping,subtotal_amount,total_amount,status,has_issue,needs_test,picker_notes,created_by,sales_rep,created_at')
+    .select('id,order_code,customer_name,client_data,products_data,payment_method,courier,country,notes,shipping,subtotal_amount,total_amount,status,has_issue,needs_test,picker_notes,danea_done,delivery_mode,sale_doc_url,label_url,created_by,sales_rep,created_at')
     .order('created_at',{ascending:false});
   // Il venditore vede solo i propri ordini (filtro lato query oltre che RLS).
   if(isSeller()){ query=query.eq('created_by',currentUser.id); }
@@ -430,7 +447,11 @@ function normalizeRemoteOrder(r){
     status:r.status||'confirmed',
     has_issue:!!r.has_issue,
     needs_test:!!r.needs_test,
-    picker_notes:r.picker_notes||''
+    picker_notes:r.picker_notes||'',
+    danea_done:!!r.danea_done,
+    delivery_mode:r.delivery_mode||'',
+    sale_doc_url:r.sale_doc_url||'',
+    label_url:r.label_url||''
   };
 }
 
@@ -646,16 +667,28 @@ function renderHistory(){
 }
 
 /* ===== STATI ORDINI ===== */
+/* Mappa centralizzata degli stati: etichetta breve, colore pallino, tag, descrizione fase */
+const STATUS_MAP={
+  confirmed:   {label:'Confermato',                       color:'green',  tag:'green',  phase:'Ordine confermato, in attesa picking'},
+  in_progress: {label:'In controllo picking',             color:'yellow', tag:'yellow', phase:'Picking in corso: controllo quantità/disponibilità'},
+  testing:     {label:'In test',                          color:'yellow', tag:'yellow', phase:'Fermo: prodotti in test'},
+  backoffice:  {label:'Attesa inserimento Danea',         color:'yellow', tag:'yellow', phase:'Fermo: attesa inserimento su Danea dal backoffice'},
+  imei:        {label:'Attesa sparo IMEI',                color:'yellow', tag:'yellow', phase:'Fermo: attesa sparo IMEI dal picking'},
+  ready:       {label:'Pronto per spedizione',            color:'blue',   tag:'blue',   phase:'Pronto: il venditore può autorizzare la spedizione'},
+  to_ship:     {label:'Documenti spedizione da preparare',color:'blue',   tag:'blue',   phase:'Spedizione autorizzata: backoffice deve caricare documento vendita e label'},
+  shipping:    {label:'Da stampare / spedire',            color:'blue',   tag:'blue',   phase:'Documenti caricati: picking deve stampare/impacchettare'},
+  completed:   {label:'Completato',                       color:'green',  tag:'green',  phase:'Ordine completato'}
+};
+function statusMeta(o){return STATUS_MAP[o.status]||STATUS_MAP.confirmed}
 function statusInfo(o){
   if(o.has_issue) return {color:'red',label:'Problema',tag:'red'};
-  if(o.status==='ready') return {color:'blue',label:'Pronto',tag:'blue'};
-  if(o.status==='in_progress') return {color:'yellow',label:'In corso',tag:'yellow'};
-  return {color:'green',label:'Confermato',tag:'green'};
+  const m=statusMeta(o);
+  return {color:m.color,label:m.label,tag:m.tag};
 }
-function statusText(o){
-  if(o.status==='ready')return'Pronto';
-  if(o.status==='in_progress')return'In corso';
-  return'Confermato';
+function statusText(o){return statusMeta(o).label}
+function phaseText(o){
+  if(o.has_issue) return 'Fermo: problema segnalato dal picking, in attesa di decisione';
+  return statusMeta(o).phase;
 }
 function renderStatus(){
   if(!qs('statusRows'))return;
@@ -664,67 +697,143 @@ function renderStatus(){
   let rows=visibleOrders().filter(o=>((o.id||'')+(o.client.name||'')+(o.sellerName||'')).toLowerCase().includes(q));
   qs('statusRows').innerHTML=rows.map(o=>{
     const si=statusInfo(o);
+    const canShip=isSeller()&&o.status==='ready'&&o.sellerId===currentUser.id;
+    const shipBtn=canShip?` <button class="btn small green" onclick="sellerShip('${esc(o.order_code)}')">Spedire</button>`:'';
+    const adminShip=isAdmin()&&o.status==='ready'?` <button class="btn small green" onclick="sellerShip('${esc(o.order_code)}')">Spedire</button>`:'';
     return `<tr>
       <td><span class="dot ${si.color}" title="${si.label}"></span></td>
       <td><b>${esc(o.id)}</b></td>
       <td>${esc(o.client.name||'—')}</td>
       <td>${esc(o.sellerName||'—')}</td>
       <td><span class="tag ${si.tag}">${esc(statusText(o))}</span></td>
+      <td style="max-width:260px;font-size:12px;color:#475569">${esc(phaseText(o))}</td>
       <td>${o.needs_test?'<span class="yn-yes">Sì</span>':'<span class="yn-no">No</span>'}</td>
       <td>${o.has_issue?'<span class="yn-yes">Sì</span>':'<span class="yn-no">No</span>'}</td>
-      <td><button class="btn small secondary" onclick="openChat('${esc(o.order_code)}')">Apri chat</button></td>
+      <td><button class="btn small secondary" onclick="openChat('${esc(o.order_code)}')">Apri chat</button>${shipBtn}${adminShip}</td>
     </tr>`;
-  }).join('') || `<tr><td colspan="8"><span class="muted">Nessun ordine.</span></td></tr>`;
+  }).join('') || `<tr><td colspan="9"><span class="muted">Nessun ordine.</span></td></tr>`;
 }
 
-/* ===== PICKING ===== */
-function pickingOrders(){
-  // picker e admin vedono tutti gli ordini confirmed / in_progress / ready
-  return remoteOrders.filter(o=>['confirmed','in_progress','ready'].includes(o.status));
-}
+/* ===== PICKING =====
+   La dashboard picking è divisa in sezioni in base alla fase:
+   - Da preparare:   confirmed / in_progress
+   - In test:        testing
+   - Da sparare IMEI: imei
+   - Spedizioni:     shipping
+*/
 function renderPicking(){
   if(!qs('pickingList'))return;
   if(!(isPicker()||isAdmin())){qs('pickingList').innerHTML='<span class="muted">Accesso non consentito.</span>';return;}
   let q=(qs('pickingSearch')?.value||'').toLowerCase();
-  let list=pickingOrders().filter(o=>((o.id||'')+(o.client.name||'')+(o.sellerName||'')).toLowerCase().includes(q));
-  if(!list.length){qs('pickingList').innerHTML='<span class="muted">Nessun ordine da preparare.</span>';return;}
-  qs('pickingList').innerHTML=list.map(o=>{
-    const si=statusInfo(o);
-    const prodRows=(o.products||[]).map(p=>`<tr><td>${esc(p.name||'-')}</td><td>${esc(p.gb||'-')}</td><td>${esc(p.color||'-')}</td><td>${esc(p.grade||'-')}</td><td>x${p.qty||0}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">Nessun prodotto</td></tr>';
-    return `<div class="pick-card" data-code="${esc(o.order_code)}">
-      <div class="pick-top">
-        <div>
-          <div style="font-size:16px;font-weight:800"><span class="dot ${si.color}"></span>${esc(o.id)}</div>
-          <div class="pick-meta">
-            Cliente: <b>${esc(o.client.name||'—')}</b><br>
-            Venditore: ${esc(o.sellerName||'—')}<br>
-            Stato: <span class="tag ${si.tag}">${esc(statusText(o))}</span>
-            &nbsp;Test: ${o.needs_test?'<span class="yn-yes">Sì</span>':'<span class="yn-no">No</span>'}
-            &nbsp;Problema: ${o.has_issue?'<span class="yn-yes">Sì</span>':'<span class="yn-no">No</span>'}
-          </div>
-        </div>
-        <div style="text-align:right">
-          <button class="btn small secondary" onclick="openChat('${esc(o.order_code)}')">Apri chat / problema</button>
-        </div>
+  const match=o=>((o.id||'')+(o.client.name||'')+(o.sellerName||'')).toLowerCase().includes(q);
+
+  const prep    = remoteOrders.filter(o=>['confirmed','in_progress'].includes(o.status)).filter(match);
+  const inTest  = remoteOrders.filter(o=>o.status==='testing').filter(match);
+  const imei    = remoteOrders.filter(o=>o.status==='imei').filter(match);
+  const shipping= remoteOrders.filter(o=>o.status==='shipping').filter(match);
+
+  let html='';
+  html+=pickSection('Da preparare', prep, pickCardPrepare, 'Nessun ordine da preparare.');
+  html+=pickSection('In test', inTest, pickCardTest, 'Nessun ordine in test.');
+  html+=pickSection('Da sparare IMEI', imei, pickCardImei, 'Nessun ordine in attesa IMEI.');
+  html+=pickSection('Spedizioni', shipping, pickCardShipping, 'Nessuna spedizione da preparare.');
+  qs('pickingList').innerHTML=html;
+}
+
+function pickSection(title, list, cardFn, emptyMsg){
+  const body = list.length ? list.map(cardFn).join('') : `<div class="muted" style="padding:6px 2px 14px">${esc(emptyMsg)}</div>`;
+  return `<div class="pick-section"><h3 class="pick-section-title">${esc(title)} <span class="pill">${list.length}</span></h3>${body}</div>`;
+}
+
+function pickHeader(o){
+  const si=statusInfo(o);
+  return `<div class="pick-top">
+    <div>
+      <div style="font-size:16px;font-weight:800"><span class="dot ${si.color}"></span>${esc(o.id)}</div>
+      <div class="pick-meta">
+        Cliente: <b>${esc(o.client.name||'—')}</b><br>
+        Venditore: ${esc(o.sellerName||'—')}<br>
+        Stato: <span class="tag ${si.tag}">${esc(statusText(o))}</span>
+        &nbsp;Test: ${o.needs_test?'<span class="yn-yes">Sì</span>':'<span class="yn-no">No</span>'}
+        &nbsp;Problema: ${o.has_issue?'<span class="yn-yes">Sì</span>':'<span class="yn-no">No</span>'}
       </div>
-      <div class="pick-prod">
-        <table><thead><tr><th>Prodotto</th><th>GB</th><th>Colore</th><th>Grado</th><th>Q.tà</th></tr></thead><tbody>${prodRows}</tbody></table>
-      </div>
-      <div class="pick-controls">
-        <label style="display:flex;align-items:center;gap:7px;font-weight:700">
-          <input type="checkbox" style="width:auto" ${o.needs_test?'checked':''} onchange="setNeedsTest('${esc(o.order_code)}',this.checked)"> Necessita test
-        </label>
-        <div></div>
-        <label style="font-weight:700;align-self:start">Note picker</label>
-        <textarea id="pn_${esc(o.order_code)}" placeholder="Note interne di picking..." style="min-height:54px">${esc(o.picker_notes||'')}</textarea>
-      </div>
-      <div class="pick-actions">
-        <button class="btn small" onclick="pickStart('${esc(o.order_code)}')">Inizia</button>
-        <button class="btn small green" onclick="pickReady('${esc(o.order_code)}')">Segna pronto</button>
-        <button class="btn small secondary" onclick="savePickerNotes('${esc(o.order_code)}')">Salva note</button>
-      </div>
-    </div>`;
-  }).join('');
+    </div>
+    <div style="text-align:right">
+      <button class="btn small secondary" onclick="openChat('${esc(o.order_code)}')">Apri chat / problema</button>
+    </div>
+  </div>`;
+}
+function pickProducts(o){
+  const prodRows=(o.products||[]).map(p=>`<tr><td>${esc(p.name||'-')}</td><td>${esc(p.gb||'-')}</td><td>${esc(p.color||'-')}</td><td>${esc(p.grade||'-')}</td><td>x${p.qty||0}</td></tr>`).join('')||'<tr><td colspan="5" class="muted">Nessun prodotto</td></tr>';
+  return `<div class="pick-prod"><table><thead><tr><th>Prodotto</th><th>GB</th><th>Colore</th><th>Grado</th><th>Q.tà</th></tr></thead><tbody>${prodRows}</tbody></table></div>`;
+}
+
+/* Card "Da preparare": controllo quantità + needs_test + note + Quantità confermate */
+function pickCardPrepare(o){
+  return `<div class="pick-card" data-code="${esc(o.order_code)}">
+    ${pickHeader(o)}
+    ${pickProducts(o)}
+    <div class="pick-controls">
+      <label style="display:flex;align-items:center;gap:7px;font-weight:700">
+        <input type="checkbox" style="width:auto" ${o.needs_test?'checked':''} onchange="setNeedsTest('${esc(o.order_code)}',this.checked)"> Necessita test
+      </label>
+      <div></div>
+      <label style="font-weight:700;align-self:start">Note picker</label>
+      <textarea id="pn_${esc(o.order_code)}" placeholder="Note interne di picking..." style="min-height:54px">${esc(o.picker_notes||'')}</textarea>
+    </div>
+    <div class="pick-actions">
+      ${o.status==='confirmed'?`<button class="btn small" onclick="pickStart('${esc(o.order_code)}')">Inizia</button>`:''}
+      <button class="btn small green" onclick="pickQtyConfirmed('${esc(o.order_code)}')">Quantità confermate</button>
+      <button class="btn small secondary" onclick="savePickerNotes('${esc(o.order_code)}')">Salva note</button>
+    </div>
+  </div>`;
+}
+
+/* Card "In test": test in corso -> Test completato */
+function pickCardTest(o){
+  return `<div class="pick-card" data-code="${esc(o.order_code)}">
+    ${pickHeader(o)}
+    ${pickProducts(o)}
+    <div class="pick-controls">
+      <label style="font-weight:700;align-self:start">Note picker</label>
+      <textarea id="pn_${esc(o.order_code)}" placeholder="Esito test, note..." style="min-height:54px">${esc(o.picker_notes||'')}</textarea>
+    </div>
+    <div class="pick-actions">
+      <button class="btn small green" onclick="pickTestDone('${esc(o.order_code)}')">Test completato</button>
+      <button class="btn small secondary" onclick="savePickerNotes('${esc(o.order_code)}')">Salva note</button>
+    </div>
+  </div>`;
+}
+
+/* Card "Da sparare IMEI": -> IMEI completati */
+function pickCardImei(o){
+  return `<div class="pick-card" data-code="${esc(o.order_code)}">
+    ${pickHeader(o)}
+    ${pickProducts(o)}
+    <div class="pick-actions">
+      <button class="btn small green" onclick="pickImeiDone('${esc(o.order_code)}')">IMEI completati</button>
+    </div>
+  </div>`;
+}
+
+/* Card "Spedizioni": documenti caricati dal backoffice -> stampa/impacchetta -> Completato */
+function pickCardShipping(o){
+  const docs=[];
+  if(o.sale_doc_url)docs.push(`<a href="${esc(o.sale_doc_url)}" target="_blank" rel="noopener">Documento vendita</a>`);
+  if(o.label_url)docs.push(`<a href="${esc(o.label_url)}" target="_blank" rel="noopener">Label</a>`);
+  const docLine=docs.length?docs.join(' · '):'<span class="muted">Nessun documento allegato</span>';
+  return `<div class="pick-card" data-code="${esc(o.order_code)}">
+    ${pickHeader(o)}
+    ${pickProducts(o)}
+    <div class="pick-prod" style="background:#fff">
+      <b style="font-size:12px">Documenti</b><br>
+      ${docLine}
+      ${o.delivery_mode?`<br><span class="muted">Modalità consegna: ${esc(o.delivery_mode)}</span>`:''}
+    </div>
+    <div class="pick-actions">
+      <button class="btn small green" onclick="pickShippingDone('${esc(o.order_code)}')">Completato</button>
+    </div>
+  </div>`;
 }
 
 function getRemoteByCode(code){return remoteOrders.find(o=>o.order_code===code || o.id===code)}
@@ -739,27 +848,113 @@ async function updateOrderFields(code,fields){
 }
 function normalizeFieldsToLocal(fields,o){
   const m={};
-  if('status'in fields)m.status=fields.status;
-  if('has_issue'in fields)m.has_issue=fields.has_issue;
-  if('needs_test'in fields)m.needs_test=fields.needs_test;
-  if('picker_notes'in fields)m.picker_notes=fields.picker_notes;
+  ['status','picker_notes','delivery_mode','sale_doc_url','label_url'].forEach(k=>{if(k in fields)m[k]=fields[k];});
+  ['has_issue','needs_test','danea_done'].forEach(k=>{if(k in fields)m[k]=!!fields[k];});
   return m;
 }
+function afterStatusChange(){renderPicking();renderStatus();renderBackoffice();renderDashboard();}
 
+/* ----- Avanzamenti PICKING ----- */
 async function pickStart(code){
-  if(await updateOrderFields(code,{status:'in_progress'})){renderPicking();renderStatus();}
+  if(await updateOrderFields(code,{status:'in_progress'}))afterStatusChange();
 }
-async function pickReady(code){
-  if(await updateOrderFields(code,{status:'ready',has_issue:false})){renderPicking();renderStatus();}
+/* Quantità confermate: se needs_test -> testing, altrimenti -> backoffice */
+async function pickQtyConfirmed(code){
+  const o=getRemoteByCode(code);
+  if(!o)return;
+  // salva eventuali note presenti nel campo
+  const ta=qs('pn_'+code); const notes=ta?{picker_notes:ta.value}:{};
+  const next = o.needs_test===true ? 'testing' : 'backoffice';
+  if(await updateOrderFields(code,{status:next,...notes}))afterStatusChange();
 }
+/* Test completato -> backoffice */
+async function pickTestDone(code){
+  const ta=qs('pn_'+code); const notes=ta?{picker_notes:ta.value}:{};
+  if(await updateOrderFields(code,{status:'backoffice',...notes}))afterStatusChange();
+}
+/* IMEI completati -> ready */
+async function pickImeiDone(code){
+  if(await updateOrderFields(code,{status:'ready'}))afterStatusChange();
+}
+/* Spedizione completata -> completed */
+async function pickShippingDone(code){
+  if(await updateOrderFields(code,{status:'completed'}))afterStatusChange();
+}
+
 async function setNeedsTest(code,val){
   await updateOrderFields(code,{needs_test:!!val});
-  renderStatus();
+  afterStatusChange();
 }
 async function savePickerNotes(code){
   const ta=qs('pn_'+code);
   const val=ta?ta.value:'';
   if(await updateOrderFields(code,{picker_notes:val})){alert('Note picker salvate');}
+}
+
+/* ----- Avanzamenti VENDITORE / ADMIN ----- */
+async function sellerShip(code){
+  const o=getRemoteByCode(code);
+  if(!o)return;
+  if(o.status!=='ready'){alert('Puoi autorizzare la spedizione solo quando l’ordine è "Pronto per spedizione".');return}
+  if(!(isAdmin()|| (isSeller()&&o.sellerId===currentUser.id))){alert('Solo il venditore collegato o un admin può autorizzare la spedizione.');return}
+  if(await updateOrderFields(code,{status:'to_ship'}))afterStatusChange();
+}
+
+/* ----- Avanzamenti BACKOFFICE ----- */
+async function backofficeDanea(code){
+  if(await updateOrderFields(code,{danea_done:true,status:'imei'}))afterStatusChange();
+}
+async function backofficeSendShipping(code){
+  const sd=qs('sd_'+code), lb=qs('lb_'+code), dm=qs('dm_'+code);
+  const fields={
+    status:'shipping',
+    sale_doc_url:sd?sd.value.trim():'',
+    label_url:lb?lb.value.trim():'',
+    delivery_mode:dm?dm.value:''
+  };
+  if(!fields.sale_doc_url){alert('Inserisci il link/riferimento del documento di vendita.');return}
+  if(!fields.delivery_mode){alert('Seleziona la modalità di consegna (delivery_mode).');return}
+  if(await updateOrderFields(code,fields))afterStatusChange();
+}
+
+/* ===== BACKOFFICE: Da inserire su Danea + Documenti spedizione ===== */
+function renderBackoffice(){
+  if(!qs('boDanea')||!qs('boShip'))return;
+  if(!(isBackoffice()||isAdmin())){qs('boDanea').innerHTML='';qs('boShip').innerHTML='';return;}
+  const q=(qs('boSearch')?.value||'').toLowerCase();
+  const match=o=>((o.id||'')+(o.client.name||'')+(o.sellerName||'')).toLowerCase().includes(q);
+
+  const danea = remoteOrders.filter(o=>o.status==='backoffice').filter(match);
+  const ship  = remoteOrders.filter(o=>o.status==='to_ship').filter(match);
+
+  qs('boDanea').innerHTML = danea.length ? danea.map(o=>`
+    <div class="pick-card" data-code="${esc(o.order_code)}">
+      ${pickHeader(o)}
+      ${pickProducts(o)}
+      <div class="pick-actions">
+        <button class="btn small green" onclick="backofficeDanea('${esc(o.order_code)}')">Inserito su Danea</button>
+      </div>
+    </div>`).join('') : '<div class="muted" style="padding:6px 2px 14px">Nessun ordine da inserire su Danea.</div>';
+
+  qs('boShip').innerHTML = ship.length ? ship.map(o=>`
+    <div class="pick-card" data-code="${esc(o.order_code)}">
+      ${pickHeader(o)}
+      ${pickProducts(o)}
+      <div class="pick-controls">
+        <label style="font-weight:700">Documento vendita (link)</label>
+        <input id="sd_${esc(o.order_code)}" placeholder="https://... oppure riferimento" value="${esc(o.sale_doc_url||'')}">
+        <label style="font-weight:700">Label (link)</label>
+        <input id="lb_${esc(o.order_code)}" placeholder="https://... oppure riferimento" value="${esc(o.label_url||'')}">
+        <label style="font-weight:700">Modalità consegna</label>
+        <select id="dm_${esc(o.order_code)}">
+          <option value="">Seleziona...</option>
+          ${['Corriere standard','Corriere espresso','Ritiro a mano','Spedizione assicurata'].map(d=>`<option ${o.delivery_mode===d?'selected':''}>${d}</option>`).join('')}
+        </select>
+      </div>
+      <div class="pick-actions">
+        <button class="btn small green" onclick="backofficeSendShipping('${esc(o.order_code)}')">Invia a picking spedizione</button>
+      </div>
+    </div>`).join('') : '<div class="muted" style="padding:6px 2px 14px">Nessun documento di spedizione da preparare.</div>';
 }
 
 /* ===== CHAT ORDINE ===== */
@@ -905,7 +1100,7 @@ async function sendPickerMessage(){
   if(type==='unavailable_no_alternative' || type==='unavailable_with_alternative'){
     await updateOrderFields(chatState.orderCode,{has_issue:true,status:'in_progress'});
     qs('chatSub').textContent=(chatState.order.client.name||'')+' · '+statusText(chatState.order)+' · PROBLEMA';
-    renderPicking();renderStatus();
+    afterStatusChange();
   }
   qs('chatMsg').value=''; if(qs('chatAlt'))qs('chatAlt').value='';
   await loadChatMessages();
@@ -961,7 +1156,7 @@ async function deleteClient(id){
   renderAll();
 }
 
-function renderAll(){renderClients();renderHistory();renderStatus();renderPicking();renderUsers();renderDashboard();updatePreview()}
+function renderAll(){renderClients();renderHistory();renderStatus();renderPicking();renderBackoffice();renderUsers();renderDashboard();updatePreview()}
 function printOrder(){if(!formReadyForDocument(true))return;window.print()}
 
 /* ===== Documento enterprise ===== */
